@@ -9,17 +9,36 @@
         'size': (11.0, 11.0), # degrees (width, height)
     },
     'sheets' : {
-        'l4_cortex_exc': url("param/l4_cortex_exc"),
-        'l4_cortex_inh': url("param/l4_cortex_inh"),
         'l23_cortex_exc': url("param/l23_cortex_exc"),
         'l23_cortex_inh': url("param/l23_cortex_inh"),
+        'l4_cortex_exc': url("param/l4_cortex_exc"),
+        'l4_cortex_inh': url("param/l4_cortex_inh"),
+        'l5_cortex_exa': url("param/l5_cortex_exa"),
+        'l5_cortex_exb': url("param/l5_cortex_exb"),
+        'l5_cortex_inh': url("param/l5_cortex_inh"),
+        'l6_cortex_exa': url("param/l6_cortex_exa"),
+        'l6_cortex_exb': url("param/l6_cortex_exb"),
+        'l6_cortex_inh': url("param/l6_cortex_inh"),
         'retina_lgn': url("param/SpatioTemporalFilterRetinaLGN_defaults"),
     },
-    'only_afferent' : False,
+    'density_frac' : 0.1,  # fraction of the real density used in the simulation
+
     'results_dir': '',
     'name' : 'SelfSustainedPushPullV1',
     'reset' : False,
-    'feedback' :  True,
+    
+    # Layers setup
+    'only_afferent' : False,  # Only connections from LGN to L4 are simulated
+    'l23' : True,
+    'l5' : True,
+    'l6' : True,
+
+    # Feedback connectivity setup
+    'feedback_l5' :  True,  # l5_exa are sending feedback to L23
+    'feedback_l6a' :  True,  # cells sending to L4 (feedback to L5, L4) 
+    'feedback_l6b' :  True,  # cells sending to L5/6 (horizontal feedback to L5)
+    # 'feedback_lgn' :  True,  # connectivity L6 --> LGN, NOT IMPLEMENTED YET
+
     'null_stimulus_period' : 150.0,
     'store_stimuli' : False,    
     'min_delay' : 0.1,
@@ -27,7 +46,6 @@
     'time_step' : 0.1,
     'pynn_seed' : 5,
     'mpi_seed' : 1023,
-    'l23' : True,
     'trial' : 0,
     'explosion_monitoring': {
        'sheet_name': 'V1_Exc_L4',

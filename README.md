@@ -1,5 +1,9 @@
 This is a model of V1 containing layers 2/3, 4, 5 and 6
 
+ToDo
+1. Add connectivity fit script
+
+
 
 # mozaik-models
 This repository contains models implemented in the Mozaik framework, that were published by the [Computational Systems Neuroscience Group](http://csng.mff.cuni.cz/) at the Faculty of Mathematics and Physics, Charles University. 

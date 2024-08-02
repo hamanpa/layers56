@@ -1,0 +1,5 @@
+{
+    "[yaml]": {
+        "diffEditor.wordWrap": "inherit"
+    }
+}
