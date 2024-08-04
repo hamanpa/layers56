@@ -38,7 +38,7 @@
 
     'K' : 1000, # Number of incoming synapses onto a single neuron
 
-    'l6a_aff_ratio' : 0.2,  # TODO: update this
+    'l6a_aff_ratio' : 0.2,  
     'self_conns' : 1.0 - ref('sheets.l4_cortex_exc.l6a_aff_ratio'),
 
 

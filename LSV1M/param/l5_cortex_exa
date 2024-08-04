@@ -44,8 +44,8 @@
 
     'K' : 1000, # Number of incoming synapses to neuron
     'l23_aff_ratio' : 0.2, # Fraction of incoming connections from L2/3
-    'l5b_aff_ratio' : 0.1, # Fraction of incoming connections from L5B
-    'l6a_aff_ratio' : 0.05, # Fraction of incoming connections from L6A
+    'l5b_aff_ratio' : 0.2, # Fraction of incoming connections from L5B
+    'l6a_aff_ratio' : 0.0, # Fraction of incoming connections from L6A
     'l6b_aff_ratio' : 0.1, # Fraction of incoming connections from L6B
 
     'self_connections' : 1.0 - ref('sheets.l5_cortex_exa.l23_aff_ratio') - ref('sheets.l5_cortex_exa.l5b_aff_ratio') - ref('sheets.l5_cortex_exa.l6a_aff_ratio') - ref('sheets.l5_cortex_exa.l6b_aff_ratio'),

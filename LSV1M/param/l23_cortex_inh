@@ -48,6 +48,7 @@
             'tau_psc': 3.0,
             'tau_fac': 0.0,
         },
+
         'weight_functions' : {
             'f1' : {
                 'component' : 'mozaik.connectors.modular_connector_functions.HyperbolicModularConnectorFunction',
@@ -57,19 +58,23 @@
                 }
             },                                        
         },
-        'delay_functions' : ref('sheets.l4_cortex_inh.L4InhL4ExcConnection.delay_functions'),
-        'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
         'weight_expression' : 'f1',
-        'delay_expression' : ref('sheets.l4_cortex_inh.L4InhL4ExcConnection.delay_expression'),
-        'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
         'base_weight': ref('sheets.l4_cortex_inh.L4InhL4ExcConnection.base_weight'),
+
+        'delay_functions' : ref('sheets.l4_cortex_inh.L4InhL4ExcConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_inh.L4InhL4ExcConnection.delay_expression'),
+
+        'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
+        'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
     	'num_samples' : ref('sheets.l23_cortex_exc.K') * 1/5,
+
         'local_module': None,
     },
 
     'L23InhL23InhConnection': {
         'target_synapses' : 'inhibitory',             
         'short_term_plasticity': ref('sheets.l23_cortex_inh.L23InhL23ExcConnection.short_term_plasticity'),
+
         'weight_functions' : {  
             'f1' : {
                 'component' : 'mozaik.connectors.modular_connector_functions.HyperbolicModularConnectorFunction',
@@ -79,13 +84,16 @@
                 }
             },                                        
         },
-        'delay_functions' : ref('sheets.l4_cortex_inh.L4InhL4InhConnection.delay_functions'),
-        'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
         'weight_expression' : 'f1',
-        'delay_expression' : ref('sheets.l4_cortex_inh.L4InhL4InhConnection.delay_expression'),
-        'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
         'base_weight': ref('sheets.l4_cortex_inh.L4InhL4InhConnection.base_weight'),
+
+        'delay_functions' : ref('sheets.l4_cortex_inh.L4InhL4InhConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_inh.L4InhL4InhConnection.delay_expression'),
+
+        'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
+        'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
     	'num_samples' : ref('sheets.l23_cortex_inh.L23InhL23ExcConnection.num_samples') *  ref('sheets.l23_cortex_inh.inhibitory_connection_ratio'),
+
         'local_module': None,
     },
 }
