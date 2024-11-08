@@ -23,10 +23,10 @@
                 'e_rev_I': -80.0,
                 'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
                 'tau_syn_I': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_I'),
-                'a' : -0.8,
-                'b' : 0.08,
+                'a' : ref('sheets.l4_cortex_exc.params.cell.params.a'),
+                'b' : ref('sheets.l4_cortex_exc.params.cell.params.b'),
                 'delta_T' : 0.8,
-                'tau_w' : 1.0,
+                'tau_w' : ref('sheets.l4_cortex_exc.params.cell.params.tau_w'),
                 'v_thresh' : ref('sheets.l4_cortex_exc.params.cell.params.v_thresh'), 
             },
             'initial_values': {
@@ -41,7 +41,7 @@
 
     'K' : 2300, # Number of incoming synapses to a neuron
     'l4_aff_ratio' : 0.22,
-    'l5a_aff_ratio' : 0.1,
+    'l5a_aff_ratio' : 0.2,
     'self_conns' : 1.0 - ref('sheets.l23_cortex_exc.l4_aff_ratio') - ref('sheets.l23_cortex_exc.l5a_aff_ratio'),
     
 
@@ -112,10 +112,10 @@
 
     	'weight_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_functions'),
         'weight_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_expression'),
-        'base_weight': ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.base_weight'),
+        'base_weight': ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.base_weight'),
 
-        'delay_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.delay_functions'),
-        'delay_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.delay_expression'),
+        'delay_functions' : ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.delay_expression'),
 
         'num_samples_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.num_samples_expression'),
@@ -130,10 +130,10 @@
 
     	'weight_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_functions'),
         'weight_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_expression'),
-        'base_weight': ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.base_weight'),
+        'base_weight': ref('sheets.l23_cortex_exc.L23ExcL5ExaConnection.base_weight'),
 
-        'delay_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.delay_functions'),
-        'delay_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.delay_expression'),
+        'delay_functions' : ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.delay_expression'),
 
         'num_samples_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.num_samples_expression'),
@@ -148,14 +148,14 @@
 
     	'weight_functions' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.weight_functions'),
         'weight_expression' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.weight_expression'),
-        'base_weight': ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.base_weight'),
+        'base_weight': ref('sheets.l4_cortex_exc.L4ExcL23InhConnection.base_weight'),
 
-        'delay_functions' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.delay_functions'),
-        'delay_expression' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.delay_expression'),
+        'delay_functions' : ref('sheets.l4_cortex_exc.L4ExcL23InhConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_exc.L4ExcL23InhConnection.delay_expression'),
 
         'num_samples_functions' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.num_samples_expression'),
-    	'num_samples' : (ref('sheets.l23_cortex_exc.L23ExcL5ExaConnection.num_samples') * 0.2 + ref('sheets.l23_cortex_exc.L23ExcL5ExbConnection.num_samples') * 0.8) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
+    	'num_samples' : (ref('sheets.l23_cortex_exc.L23ExcL5ExaConnection.num_samples')* ref('l5_conn_ratio') + ref('sheets.l23_cortex_exc.L23ExcL5ExbConnection.num_samples') * (1-ref('l5_conn_ratio'))) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
 
         'local_module': None,
     },

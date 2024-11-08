@@ -29,6 +29,11 @@ nest.Install("stepcurrentmodule")
 if True:
     data_store, model = run_workflow(
         'SelfSustainedPushPull', SelfSustainedPushPull, create_experiments)
+
+    model.connectors['V1L23ExcL5ExaConnection'].store_connections(data_store)
+    model.connectors['V1L23ExcL5ExbConnection'].store_connections(data_store)
+    model.connectors['V1L23ExcL5InhConnection'].store_connections(data_store)
+
     if False:
         model.connectors['V1AffConnectionOn'].store_connections(data_store)
         model.connectors['V1AffConnectionOff'].store_connections(data_store)
@@ -58,6 +63,8 @@ else:
     data_store = PickledDataStore(load=True, parameters=ParameterSet(
         {'root_directory': 'SelfSustainedPushPull_test____', 'store_stimuli': False}), replace=True)
 
-if mpi_comm.rank ==0 and not data_store.block.annotations["simulation_log"]["explosion_detected"]:
+if mpi_comm.rank == 0 and not data_store.block.annotations["simulation_log"]["explosion_detected"]:
     print("Starting visualization")
     perform_analysis_and_visualization(data_store)
+    print("Finished")
+

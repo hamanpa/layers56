@@ -1,0 +1,21 @@
+# Simulation runs are denoted bya a date, time stamp and combinations
+LSV1M/2024*/
+
+# ignores jupyter stuff
+LSV1M/.ipynb_checkpoints/
+LSV1M/__pycache__/
+
+# ignores vscode stuff
+.vscode/
+
+# ignore my stuff from playing around
+LSV1M/results
+LSV1M/results-old/
+LSV1M/analysis_output.txt
+LSV1M/*.png
+LSV1M/*.ipynb
+
+# ignore other foleders
+CSNGModel/  
+my_scripts/
+ParameterSearches/

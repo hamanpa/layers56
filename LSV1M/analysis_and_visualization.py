@@ -22,61 +22,71 @@ high_contrast = 100
 dpi = 300
 paper_figures = True
 
+ANALYSIS_RESULTS = True  # save analysis results as a pickle file
+
+ALL_SHEETS = [
+    'V1_Exc_L2/3', 
+    'V1_Inh_L2/3',
+    'V1_Exc_L4', 
+    'V1_Inh_L4', 
+    'V1_Exa_L5', 
+    'V1_Exb_L5', 
+    'V1_Inh_L5', 
+    'V1_Exa_L6', 
+    'V1_Exb_L6', 
+    'V1_Inh_L6',
+]
+
+EXC_SHEETS = [
+    'V1_Exc_L2/3', 
+    'V1_Exc_L4', 
+    'V1_Exa_L5', 
+    'V1_Exb_L5', 
+    'V1_Exa_L6', 
+    'V1_Exb_L6', 
+]
+
+SHEETS_SORT = lambda x: ALL_SHEETS.index(x)
+
+INH_SHEETS = sorted(set(ALL_SHEETS) - set(EXC_SHEETS), key=SHEETS_SORT)
 
 def memory_usage_psutil():
     # return the memory usage in MB
     return process.memory_percent()
 
 
-def analysis(data_store, analog_ids, analog_ids_inh, analog_ids23=None, analog_ids_inh23=None):
-    sheets = list(set(data_store.sheets()) & set(
-        ['V1_Exc_L4', 'V1_Inh_L4', 'V1_Exc_L2/3', 'V1_Inh_L2/3']))
-    exc_sheets = list(set(data_store.sheets()) &
-                      set(['V1_Exc_L4', 'V1_Exc_L2/3']))
-    l23_flag = ('V1_Exc_L2/3' in set(sheets))
+def analysis(data_store, analog_ids):
+    sheets = sorted(set(data_store.sheets()) & set(ALL_SHEETS), key=SHEETS_SORT)
+    exc_sheets = sorted(set(data_store.sheets()) & set(EXC_SHEETS), key=SHEETS_SORT)
 
     logger.info('0: ' + str(memory_usage_psutil()))
 
-    dsv = param_filter_query(
-        data_store, st_name='FullfieldDriftingSinusoidalGrating', sheet_name=sheets)
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', sheet_name=sheets)
     Analog_F0andF1(dsv, ParameterSet({})).analyse()
 
-    TrialMean(dsv, ParameterSet(
-        {'cond_exc': True, 'vm': True, 'cond_inh': True})).analyse()
+    TrialMean(dsv, ParameterSet({'cond_exc': True, 'vm': True, 'cond_inh': True})).analyse()
+    TrialAveragedFiringRate(param_filter_query(data_store, sheet_name=sheets, st_name='FullfieldDriftingSinusoidalGrating'), ParameterSet({})).analyse()
+    TrialAveragedFiringRate(param_filter_query(data_store, st_direct_stimulation_name=None, st_name='InternalStimulus'), ParameterSet({})).analyse()
 
-    TrialAveragedFiringRate(param_filter_query(data_store, sheet_name=sheets,
-                                               st_name='FullfieldDriftingSinusoidalGrating'), ParameterSet({})).analyse()
-    TrialAveragedFiringRate(param_filter_query(
-        data_store, st_direct_stimulation_name=None, st_name='InternalStimulus'), ParameterSet({})).analyse()
     logger.info('1: ' + str(memory_usage_psutil()))
-    Irregularity(param_filter_query(data_store, st_direct_stimulation_name=None,
-                                    st_name='InternalStimulus'), ParameterSet({})).analyse()
 
-    PSTH(param_filter_query(data_store),
-         ParameterSet({'bin_length': 10.0})).analyse()
+    Irregularity(param_filter_query(data_store, st_direct_stimulation_name=None, st_name='InternalStimulus'), ParameterSet({})).analyse()
+    PSTH(param_filter_query(data_store), ParameterSet({'bin_length': 10.0})).analyse()
 
     logger.info('2: ' + str(memory_usage_psutil()))
-    NeuronToNeuronAnalogSignalCorrelations(param_filter_query(
-        data_store, analysis_algorithm='PSTH'), ParameterSet({'convert_nan_to_zero': True})).analyse()
+
+    NeuronToNeuronAnalogSignalCorrelations(param_filter_query(data_store, analysis_algorithm='PSTH'), ParameterSet({'convert_nan_to_zero': True})).analyse()
 
     logger.info('3: ' + str(memory_usage_psutil()))
-    PopulationMeanAndVar(param_filter_query(data_store, st_direct_stimulation_name=None,
-                                            st_name='InternalStimulus'), ParameterSet({'ignore_nan_and_inf': False})).analyse()
 
-    dsv = queries.param_filter_query(
-        data_store, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='PSTH')
-    TrialMean(dsv, ParameterSet(
-        {'cond_exc': False, 'vm': False, 'cond_inh': False})).analyse()
+    PopulationMeanAndVar(param_filter_query(data_store, st_direct_stimulation_name=None, st_name='InternalStimulus'), ParameterSet({'ignore_nan_and_inf': False})).analyse()
+    dsv = queries.param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='PSTH')
+    TrialMean(dsv, ParameterSet({'cond_exc': False, 'vm': False, 'cond_inh': False})).analyse()
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate', sheet_name=sheets)
+    GaussianTuningCurveFit(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate', sheet_name=sheets)
+    PeriodicTuningCurvePreferenceAndSelectivity_VectorAverage(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
 
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate', sheet_name=sheets)
-    GaussianTuningCurveFit(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
-
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate', sheet_name=sheets)
-    PeriodicTuningCurvePreferenceAndSelectivity_VectorAverage(
-        dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
     logger.info('4: ' + str(memory_usage_psutil()))
 
     dsv = param_filter_query(data_store, sheet_name=exc_sheets)
@@ -84,185 +94,74 @@ def analysis(data_store, analog_ids, analog_ids_inh, analog_ids23=None, analog_i
 
     logger.info('5: ' + str(memory_usage_psutil()))
 
-
-    dsv = param_filter_query(
-        data_store, st_name='InternalStimulus', st_direct_stimulation_name=None)
+    dsv = param_filter_query(data_store, st_name='InternalStimulus', st_direct_stimulation_name=None)
     Analog_MeanSTDAndFanoFactor(dsv, ParameterSet({})).analyse()
 
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Exc_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-    SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
+    for sheet in sheets:
+        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name=sheet, analysis_algorithm=['Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
+        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', sheet_name=sheet, analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
+        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
 
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Exc_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-    SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
+        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name=sheet, analysis_algorithm=['Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
+        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', sheet_name=sheet, analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
+        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
 
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(VM)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Exc_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Vm')
-    OperationPNVfromPNVS(pnv, lambda x, y: -(x+y), '-(x+y)',
-                         dsv, ParameterSet({})).analyse()
-
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Inh_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-    SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
-
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Inh_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-    SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
-
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(VM)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             sheet_name='V1_Inh_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Vm')
-    OperationPNVfromPNVS(pnv, lambda x, y: -(x+y), '-(x+y)',
-                         dsv, ParameterSet({})).analyse()
-
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk',
-                             sheet_name='V1_Exc_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-    OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y',
-                         dsv, ParameterSet({})).analyse()
-
-    pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L4', analysis_algorithm=[
-                             'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-    dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk',
-                             sheet_name='V1_Exc_L4', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-    OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y',
-                         dsv, ParameterSet({})).analyse()
+        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name=sheet, analysis_algorithm=['Analog_MeanSTDAndFanoFactor'], value_name='Mean(VM)', st_direct_stimulation_name=None).get_analysis_result()[0]
+        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', sheet_name=sheet, analysis_algorithm=['Analog_F0andF1'], value_name='F0_Vm')
+        OperationPNVfromPNVS(pnv, lambda x, y: -(x+y), '-(x+y)', dsv, ParameterSet({})).analyse()
 
     logger.info('8: ' + str(memory_usage_psutil()))
-    if l23_flag:
 
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Exc_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
+    for sheet in exc_sheets:
+        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name=sheet, analysis_algorithm=['Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
+        dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk', sheet_name=sheet, analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
+        OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y', dsv, ParameterSet({})).analyse()
 
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Exc_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(VM)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Exc_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Vm')
-        OperationPNVfromPNVS(pnv, lambda x, y: -(x+y),
-                             '-(x+y)', dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Inh_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Inh_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-        SubtractPNVfromPNVS(pnv, dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Inh_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(VM)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                                 sheet_name='V1_Inh_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Vm')
-        OperationPNVfromPNVS(pnv, lambda x, y: -(x+y),
-                             '-(x+y)', dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ECond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk',
-                                 sheet_name='V1_Exc_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Exc_Cond')
-        OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y',
-                             dsv, ParameterSet({})).analyse()
-
-        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name='V1_Exc_L2/3', analysis_algorithm=[
-                                 'Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
-        dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk',
-                                 sheet_name='V1_Exc_L2/3', analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
-        OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y',
-                             dsv, ParameterSet({})).analyse()
+        pnv = param_filter_query(data_store, st_name='InternalStimulus', sheet_name=sheet, analysis_algorithm=['Analog_MeanSTDAndFanoFactor'], value_name='Mean(ICond)', st_direct_stimulation_name=None).get_analysis_result()[0]
+        dsv = param_filter_query(data_store, st_name='DriftingSinusoidalGratingDisk', sheet_name=sheet, analysis_algorithm=['Analog_F0andF1'], value_name='F0_Inh_Cond')
+        OperationPNVfromPNVS(pnv, lambda x, y: x-y, 'x-y', dsv, ParameterSet({})).analyse()
 
     logger.info('9: ' + str(memory_usage_psutil()))
-    dsv = queries.param_filter_query(
-        data_store, y_axis_name='spike count (bin=13.0)')
-    mozaik.analysis.analysis.TrialToTrialFanoFactorOfAnalogSignal(
-        dsv, ParameterSet({})).analyse()
+
+    dsv = queries.param_filter_query(data_store, y_axis_name='spike count (bin=13.0)')
+    mozaik.analysis.analysis.TrialToTrialFanoFactorOfAnalogSignal(dsv, ParameterSet({})).analyse()
 
     if True:
         logger.info('10: ' + str(memory_usage_psutil()))
 
-        TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L4', st_name="NaturalImageWithEyeMovement",
-                                                                          analysis_algorithm='ActionPotentialRemoval'), ParameterSet({'neurons': list(analog_ids), 'window_min': 0, 'window_max': -1})).analyse()
-        TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L4', st_name="NaturalImageWithEyeMovement", analysis_algorithm='PSTH'), ParameterSet({
-                                                       'neurons': list(analog_ids), 'window_min': 0, 'window_max': -1})).analyse()
-        TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L4', st_name='FullfieldDriftingSinusoidalGrating',
-                                                                          analysis_algorithm='ActionPotentialRemoval', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids), 'window_min': 0, 'window_max': -1})).analyse()
-        TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L4', st_name='FullfieldDriftingSinusoidalGrating',
-                                                                          analysis_algorithm='PSTH', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids), 'window_min': 0, 'window_max': -1})).analyse()
+        for sheet in exc_sheets:
+            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name=sheet, st_name="NaturalImageWithEyeMovement", analysis_algorithm='ActionPotentialRemoval'), ParameterSet({'neurons': list(analog_ids[sheet]), 'window_min': 0, 'window_max': -1})).analyse()
+            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name=sheet, st_name="NaturalImageWithEyeMovement", analysis_algorithm='PSTH'), ParameterSet({'neurons': list(analog_ids[sheet]), 'window_min': 0, 'window_max': -1})).analyse()
+            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name=sheet, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='ActionPotentialRemoval', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids[sheet]), 'window_min': 0, 'window_max': -1})).analyse()
+            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name=sheet, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='PSTH', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids[sheet]), 'window_min': 0, 'window_max': -1})).analyse()
 
-        logger.info('11: ' + str(memory_usage_psutil()))
-        if l23_flag:
-            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L2/3', st_name="NaturalImageWithEyeMovement",
-                                                                              analysis_algorithm='ActionPotentialRemoval'), ParameterSet({'neurons': list(analog_ids23), 'window_min': 0, 'window_max': -1})).analyse()
-            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L2/3', st_name="NaturalImageWithEyeMovement",
-                                                                              analysis_algorithm='PSTH'), ParameterSet({'neurons': list(analog_ids23), 'window_min': 0, 'window_max': -1})).analyse()
-            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L2/3', st_name='FullfieldDriftingSinusoidalGrating',
-                                                                              analysis_algorithm='ActionPotentialRemoval', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids23), 'window_min': 0, 'window_max': -1})).analyse()
-            TrialToTrialCrossCorrelationOfAnalogSignalList(param_filter_query(data_store, sheet_name='V1_Exc_L2/3', st_name='FullfieldDriftingSinusoidalGrating',
-                                                                              analysis_algorithm='PSTH', st_contrast=ttcc_contrast), ParameterSet({'neurons': list(analog_ids23), 'window_min': 0, 'window_max': -1})).analyse()
         logger.info('12: ' + str(memory_usage_psutil()))
 
-    dsv = param_filter_query(
-        data_store, analysis_algorithm='ActionPotentialRemoval')
+    dsv = param_filter_query(data_store, analysis_algorithm='ActionPotentialRemoval')
     dsv.print_content(full_ADS=True)
-    TrialVariability(dsv, ParameterSet(
-        {'vm': False,  'cond_exc': False, 'cond_inh': False})).analyse()
-    param_filter_query(
-        data_store, analysis_algorithm='TrialVariability').print_content(full_ADS=True)
+    TrialVariability(dsv, ParameterSet({'vm': False,  'cond_exc': False, 'cond_inh': False})).analyse()
+    param_filter_query(data_store, analysis_algorithm='TrialVariability').print_content(full_ADS=True)
 
     logger.info('13: ' + str(memory_usage_psutil()))
-    ModulationRatio(param_filter_query(
-        data_store, sheet_name=exc_sheets, st_contrast=[high_contrast]), ParameterSet({})).analyse()
+
+    ModulationRatio(param_filter_query(data_store, sheet_name=exc_sheets, st_contrast=[high_contrast]), ParameterSet({})).analyse()
 
     logger.info('14: ' + str(memory_usage_psutil()))
 
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating',
-                             analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate')
-    CircularVarianceOfTuningCurve(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm='TrialAveragedFiringRate', value_name='Firing rate')
+    CircularVarianceOfTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
 
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', value_name=[
-                             'F1(psth (bin=10.0) trial-to-trial mean)'], analysis_algorithm='Analog_F0andF1', sheet_name=sheets)
-    GaussianTuningCurveFit(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
-    CircularVarianceOfTuningCurve(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', value_name=['F1(psth (bin=10.0) trial-to-trial mean)'], analysis_algorithm='Analog_F0andF1', sheet_name=sheets)
+    GaussianTuningCurveFit(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
+    CircularVarianceOfTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
 
-    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', value_name=[
-                             'F0(psth (bin=10.0) trial-to-trial mean)'], analysis_algorithm='Analog_F0andF1', sheet_name=sheets)
-    GaussianTuningCurveFit(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
-    CircularVarianceOfTuningCurve(dsv, ParameterSet(
-        {'parameter_name': 'orientation'})).analyse()
+    dsv = param_filter_query(data_store, st_name='FullfieldDriftingSinusoidalGrating', value_name=['F0(psth (bin=10.0) trial-to-trial mean)'], analysis_algorithm='Analog_F0andF1', sheet_name=sheets)
+    GaussianTuningCurveFit(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
+    CircularVarianceOfTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation'})).analyse()
 
     logger.info('15: ' + str(memory_usage_psutil()))
 
     data_store.save()
-
 
 def perform_analysis_and_visualization_stc(data_store):
     l23 = 'V1_Exc_L2/3' in set(data_store.sheets())
@@ -422,95 +321,96 @@ def perform_analysis_and_visualization_stc(data_store):
             SizeTuningOverviewNew(data_store, ParameterSet({'l4_neurons': list(center4), 'l23_neurons': [], 'l4_neurons_analog': list(
                 analog_center4), 'l23_neurons_analog': []}), plot_file_name='SizeTuningOverviewNew.png', fig_param={'dpi': dpi, 'figsize': (18, 11)}).plot()
 
-
 def perform_analysis_and_visualization(data_store):
-
-    sheets = list(set(data_store.sheets()) & set(
-        ['V1_Exc_L4', 'V1_Inh_L4', 'V1_Exc_L2/3', 'V1_Inh_L2/3']))
-    exc_sheets = list(set(data_store.sheets()) &
-                      set(['V1_Exc_L4', 'V1_Exc_L2/3']))
-    l23_flag = 'V1_Exc_L2/3' in set(sheets)
+    sheets = sorted(set(data_store.sheets()) & set(ALL_SHEETS), key=SHEETS_SORT)
+    exc_sheets = sorted(set(data_store.sheets()) & set(EXC_SHEETS), key=SHEETS_SORT)
 
     NeuronAnnotationsToPerNeuronValues(data_store, ParameterSet({})).analyse()
 
-    analog_ids = param_filter_query(data_store, sheet_name="V1_Exc_L4").get_segments()[
-        0].get_stored_esyn_ids()
-    analog_ids_inh = param_filter_query(
-        data_store, sheet_name="V1_Inh_L4").get_segments()[0].get_stored_esyn_ids()
-    spike_ids = param_filter_query(data_store, sheet_name="V1_Exc_L4").get_segments()[
-        0].get_stored_spike_train_ids()
-    spike_ids_inh = param_filter_query(data_store, sheet_name="V1_Inh_L4").get_segments()[
-        0].get_stored_spike_train_ids()
-    analog_ids_ON = param_filter_query(data_store,sheet_name="X_ON").get_segments()[0].get_stored_esyn_ids()
-    analog_ids_OFF = param_filter_query(data_store,sheet_name="X_OFF").get_segments()[0].get_stored_esyn_ids()
-    spike_ids_ON = param_filter_query(data_store, sheet_name="X_ON").get_segments()[
-        0].get_stored_spike_train_ids()
-    spike_ids_OFF = param_filter_query(data_store, sheet_name="X_OFF").get_segments()[
-        0].get_stored_spike_train_ids()
+    analog_ids = dict()
+    spike_ids = dict()
+    for sheet in data_store.sheets():  # this time also for LGN sheets
+        analog_ids[sheet] = param_filter_query(data_store,sheet_name=sheet).get_segments()[0].get_stored_esyn_ids()
+        spike_ids[sheet] = param_filter_query(data_store,sheet_name=sheet).get_segments()[0].get_stored_spike_train_ids()
 
-    if l23_flag:
-        analog_ids23 = param_filter_query(
-            data_store, sheet_name="V1_Exc_L2/3").get_segments()[0].get_stored_esyn_ids()
-        analog_ids_inh23 = param_filter_query(
-            data_store, sheet_name="V1_Inh_L2/3").get_segments()[0].get_stored_esyn_ids()
-        spike_ids23 = param_filter_query(
-            data_store, sheet_name="V1_Exc_L2/3").get_segments()[0].get_stored_spike_train_ids()
-        spike_ids_inh23 = param_filter_query(
-            data_store, sheet_name="V1_Inh_L2/3").get_segments()[0].get_stored_spike_train_ids()
-    else:
-        analog_ids23 = None
-        analog_ids_inh23 = None
+    orientation = dict()
+    for sheet in sheets:
+        orientation[sheet] = data_store.get_analysis_result(identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name=sheet)[0]
 
-    if l23_flag:
-        l23_exc_or = data_store.get_analysis_result(
-            identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name='V1_Exc_L2/3')[0]
-        l23_inh_or = data_store.get_analysis_result(
-            identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name='V1_Inh_L2/3')[0]
+    l4_exc_phase = data_store.get_analysis_result(identifier='PerNeuronValue', value_name='LGNAfferentPhase', sheet_name='V1_Exc_L4')[0]
+    l4_inh_phase = data_store.get_analysis_result(identifier='PerNeuronValue', value_name='LGNAfferentPhase', sheet_name='V1_Inh_L4')[0]
 
-    l4_exc_or = data_store.get_analysis_result(
-        identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name='V1_Exc_L4')
-    l4_exc_phase = data_store.get_analysis_result(
-        identifier='PerNeuronValue', value_name='LGNAfferentPhase', sheet_name='V1_Exc_L4')
-    l4_exc = analog_ids[numpy.argmin([circular_dist(o, 0, numpy.pi) for (o, p) in zip(
-        l4_exc_or[0].get_value_by_id(analog_ids), l4_exc_phase[0].get_value_by_id(analog_ids))])]
-    l4_inh_or = data_store.get_analysis_result(
-        identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name='V1_Inh_L4')
-    l4_inh_phase = data_store.get_analysis_result(
-        identifier='PerNeuronValue', value_name='LGNAfferentPhase', sheet_name='V1_Inh_L4')
-    l4_inh = analog_ids_inh[numpy.argmin([circular_dist(o, 0, numpy.pi) for (o, p) in zip(
-        l4_inh_or[0].get_value_by_id(analog_ids_inh), l4_inh_phase[0].get_value_by_id(analog_ids_inh))])]
-    l4_exc_or_many = numpy.array(l4_exc_or[0].ids)[numpy.nonzero(numpy.array([circular_dist(
-        o, 0, numpy.pi) for (o, p) in zip(l4_exc_or[0].values, l4_exc_phase[0].values)]) < 0.1)[0]]
+    # Phase part is not needed?? (it was in the original code)
+    # used later for plotting
+    l4_exc = analog_ids['V1_Exc_L4'][numpy.argmin([circular_dist(o, 0, numpy.pi) for (o, p) in zip(orientation['V1_Exc_L4'].get_value_by_id(analog_ids['V1_Exc_L4']), l4_exc_phase.get_value_by_id(analog_ids['V1_Exc_L4']))])]
+    l4_inh = analog_ids['V1_Inh_L4'][numpy.argmin([circular_dist(o, 0, numpy.pi) for (o, p) in zip(orientation['V1_Inh_L4'].get_value_by_id(analog_ids['V1_Inh_L4']), l4_inh_phase.get_value_by_id(analog_ids['V1_Inh_L4']))])]
 
-    l4_exc_or_many = list(set(l4_exc_or_many) & set(spike_ids))
-
-    if l23_flag:
-        l23_exc_or_many = numpy.array(l23_exc_or.ids)[numpy.nonzero(numpy.array(
-            [circular_dist(o, 0, numpy.pi) for o in l23_exc_or.values]) < 0.1)[0]]
-        l23_exc_or_many = list(set(l23_exc_or_many) & set(spike_ids23))
+    or_many = dict()
+    for sheet in sheets:  # Previous code had this only for excitatory
+        or_many[sheet] = numpy.array(orientation[sheet].ids)[numpy.nonzero(numpy.array([circular_dist(o, 0, numpy.pi) for o in orientation[sheet].values]) < 0.1)[0]]
+        or_many[sheet] = list(set(or_many[sheet]) & set(spike_ids[sheet]))
 
     orr = list(set([MozaikParametrized.idd(s).orientation for s in queries.param_filter_query(
         data_store, st_name='FullfieldDriftingSinusoidalGrating', st_contrast=high_contrast).get_stimuli()]))
 
-    l4_exc_or_many_analog = numpy.array(analog_ids)[numpy.nonzero(numpy.array(
-        [circular_dist(l4_exc_or[0].get_value_by_id(i), 0, numpy.pi) for i in analog_ids]) < 0.1)[0]]
-    l4_inh_or_many_analog = numpy.array(analog_ids_inh)[numpy.nonzero(numpy.array(
-        [circular_dist(l4_inh_or[0].get_value_by_id(i), 0, numpy.pi) for i in analog_ids_inh]) < 0.15)[0]]
-
-    if l23_flag:
-        l23_inh_or_many_analog = numpy.array(analog_ids_inh23)[numpy.nonzero(numpy.array(
-            [circular_dist(l23_inh_or.get_value_by_id(i), 0, numpy.pi) for i in analog_ids_inh23]) < 0.15)[0]]
-        l23_exc_or_many_analog = numpy.array(analog_ids23)[numpy.nonzero(numpy.array(
-            [circular_dist(l23_exc_or.get_value_by_id(i), 0, numpy.pi) for i in analog_ids23]) < 0.1)[0]]
+    or_many_analog = dict()
+    for sheet in sheets:
+        or_many_analog[sheet] = numpy.array(analog_ids[sheet])[numpy.nonzero(numpy.array([circular_dist(orientation[sheet].get_value_by_id(i), 0, numpy.pi) for i in analog_ids[sheet]]) < 0.1)[0]]
 
     if True:
-        if l23_flag:
-            analysis(data_store, analog_ids, analog_ids_inh,
-                     analog_ids23, analog_ids_inh23)
-        else:
-            analysis(data_store, analog_ids, analog_ids_inh)
+        analysis(data_store, analog_ids)
+
 
     if True:  # PLOTTING
+        activity_plot_param = {
+            'frame_rate': 5,
+            'bin_width': 5.0,
+            'scatter':  True,
+            'resolution': 0
+        }
+        if paper_figures:
+            OrientationTuningSummaryAnalogSignalsAllLayers(data_store, ParameterSet({'sheet_names': sheets}),
+                fig_param={'dpi': dpi, 'figsize': (18, 12)},plot_file_name='Fig7.png').plot({'*.fontsize': 19, '*.y_lim': (0, None)})
+            OrientationTuningSummaryFiringRatesAllLayers(data_store, ParameterSet({'sheet_names': sheets}),
+                fig_param={'dpi': dpi, 'figsize': (18, 21)}, plot_file_name='Fig6.png').plot({'*.fontsize': 19})
+
+            or_many_analog_plot_idx = {sheet: 0 for sheet in or_many_analog}
+            or_many_analog_plot = {sheet : or_many_analog[sheet][or_many_analog_plot_idx[sheet]] for sheet in or_many_analog}
+            LSV1MReponseOverviewAllLayers(
+                data_store,
+                ParameterSet({
+                    'or_many_analog' : or_many_analog_plot,
+                    'exc_sheet_names' : exc_sheets,
+                }),
+                fig_param={'dpi' : dpi,'figsize': (18,18)},
+                plot_file_name='Fig5.png'
+            ).plot({
+                '*.Vm_plot.x_ticks':[0,2000],
+                '*.Conductance_plot.x_ticks':[0,2000],
+                "*.title" : None,
+                '*.Vm_plot.y_lim' : (-80,-50),
+
+                'ExcOr0L4.Conductance_plot.y_lim' : (0,15),
+                'ExcOrPiL4.Conductance_plot.y_lim' : (0,15),
+                'InhOr0L4.Conductance_plot.y_lim' : (0,15),
+                'InhOrPiL4.Conductance_plot.y_lim' : (0,15),
+
+                'ExcOr0L23.Conductance_plot.y_lim' : (0,70),
+                'ExcOrPiL23.Conductance_plot.y_lim' : (0,70),
+                'InhOr0L23.Conductance_plot.y_lim' : (0,70),
+                'InhOrPiL23.Conductance_plot.y_lim' : (0,70),
+
+                'ExaOr0L5.Conductance_plot.y_lim' : (0,70),
+                'ExaOrPiL5.Conductance_plot.y_lim' : (0,70),
+                'ExbOr0L5.Conductance_plot.y_lim' : (0,70),
+                'ExbOrPiL5.Conductance_plot.y_lim' : (0,70),
+                'InhOr0L5.Conductance_plot.y_lim' : (0,70),
+                'InhOrPiL5.Conductance_plot.y_lim' : (0,70),
+            })
+
+
+    # TODO: add the rest of the plots!
+    if False:  # PLOTTING (old)
         activity_plot_param = {
             'frame_rate': 5,
             'bin_width': 5.0,
@@ -757,29 +657,13 @@ def perform_analysis_and_visualization(data_store):
             OrientationMapMatching(data_store,ParameterSet({}), plot_file_name='OrientationComparison.png',fig_param={'dpi' : dpi,'figsize': (6,6)}).plot()
 
 
+
+
 def perform_analysis_and_visualization_spont(data_store):
-    sheets = list(set(data_store.sheets()) & set(['V1_Exc_L4','V1_Inh_L4','V1_Exc_L2/3','V1_Inh_L2/3']))
-    exc_sheets = list(set(data_store.sheets()) & set(['V1_Exc_L4', 'V1_Exc_L2/3']))
+    sheets = sorted(set(data_store.sheets()) & set(ALL_SHEETS), key=SHEETS_SORT)
+    exc_sheets = sorted(set(data_store.sheets()) & set(EXC_SHEETS), key=SHEETS_SORT)
 
-    l23_flag = 'V1_Exc_L2/3' in set(sheets)
-
-    analog_ids = param_filter_query(data_store,sheet_name="V1_Exc_L4").get_segments()[0].get_stored_esyn_ids()
-    analog_ids_inh = param_filter_query(data_store,sheet_name="V1_Inh_L4").get_segments()[0].get_stored_esyn_ids()
-    spike_ids = param_filter_query(data_store,sheet_name="V1_Exc_L4").get_segments()[0].get_stored_spike_train_ids()
-    spike_ids_inh = param_filter_query(data_store,sheet_name="V1_Inh_L4").get_segments()[0].get_stored_spike_train_ids()
-
-    if l23_flag:
-
-        analog_ids23 = param_filter_query(data_store,sheet_name="V1_Exc_L2/3").get_segments()[0].get_stored_esyn_ids()
-        analog_ids_inh23 = param_filter_query(data_store,sheet_name="V1_Inh_L2/3").get_segments()[0].get_stored_esyn_ids()
-        spike_ids23 = param_filter_query(data_store,sheet_name="V1_Exc_L2/3").get_segments()[0].get_stored_spike_train_ids()
-        spike_ids_inh23 = param_filter_query(data_store,sheet_name="V1_Inh_L2/3").get_segments()[0].get_stored_spike_train_ids()
-    else:
-        analog_ids23 = []
-        analog_ids_inh23 = []
-        spike_ids23 = []
-        spike_ids_inh23 = []
-    
+    # Analysis part
     if True:
         TrialAveragedFiringRate(data_store,ParameterSet({})).analyse()
         Analog_MeanSTDAndFanoFactor(param_filter_query(data_store,st_direct_stimulation_name=None),ParameterSet({})).analyse()
@@ -794,36 +678,50 @@ def perform_analysis_and_visualization_spont(data_store):
         PopulationMeanAndVar(dsv,ParameterSet({'ignore_nan_and_inf': False})).analyse()
 
         data_store.save()
-    
-    if paper_figures:
-        if l23_flag:
-            SpontActOverview(data_store,ParameterSet({'l4_exc_neuron' : analog_ids[0], 'l4_inh_neuron' : analog_ids_inh[0],'l23_exc_neuron' : analog_ids23[0],'l23_inh_neuron' : analog_ids_inh23[0]}),plot_file_name='Fig3.png', fig_param={'dpi' : dpi,'figsize': (15,12)}).plot()
-            SpontStatisticsOverview(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (15,10)},plot_file_name='Fig4.png').plot()
-        else:
-            SpontActOverview(data_store,ParameterSet({'l4_exc_neuron' : analog_ids[0], 'l4_inh_neuron' : analog_ids_inh[0],'l23_exc_neuron' : -1,'l23_inh_neuron' : -1}),plot_file_name='Fig3.png', fig_param={'dpi' : dpi,'figsize': (15,12)}).plot()
-            SpontStatisticsOverview(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (15,10)},plot_file_name='Fig4.png').plot()
 
+    # Get the IDs of the neurons
+    analog_ids = dict()
+    spike_ids = dict()
+    for sheet in sheets:
+        analog_ids[sheet] = param_filter_query(data_store,sheet_name=sheet).get_segments()[0].get_stored_esyn_ids()
+        spike_ids[sheet] = param_filter_query(data_store,sheet_name=sheet).get_segments()[0].get_stored_spike_train_ids()
+
+    if paper_figures:
+        SpontActOverviewAllLayers(data_store,
+            ParameterSet({
+                'l4_exc_neuron' : analog_ids.get('V1_Exc_L4', [-1])[0],
+                'l4_inh_neuron' : analog_ids.get('V1_Inh_L4', [-1])[0],
+                'l23_exc_neuron' : analog_ids.get('V1_Exc_L2/3', [-1])[0],
+                'l23_inh_neuron' : analog_ids.get('V1_Inh_L2/3', [-1])[0],
+                'l5_exa_neuron' : analog_ids.get('V1_Exa_L5', [-1])[0],
+                'l5_exb_neuron' : analog_ids.get('V1_Exb_L5', [-1])[0],
+                'l5_inh_neuron' : analog_ids.get('V1_Inh_L5', [-1])[0],
+                'l6_exa_neuron' : analog_ids.get('V1_Exa_L6', [-1])[0],
+                'l6_exb_neuron' : analog_ids.get('V1_Exb_L6', [-1])[0],
+                'l6_inh_neuron' : analog_ids.get('V1_Inh_L6', [-1])[0],
+            }),
+            plot_file_name='Fig3.png', 
+            fig_param={'dpi' : dpi,'figsize': (15,20)}).plot()
+        SpontStatisticsOverviewAllLayers(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (20,20)},plot_file_name='Fig4.png').plot()
     else:
         dsv = param_filter_query(data_store,st_name=['InternalStimulus'],st_direct_stimulation_name=None)
-        OverviewPlot(dsv,ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : analog_ids[0], 'sheet_activity' : {}, 'spontaneous' : True}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSExcAnalogL4.png').plot()
-        OverviewPlot(dsv,ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : analog_ids_inh[0], 'sheet_activity' : {}, 'spontaneous' : True}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSInhAnalogL4.png').plot()
-
-        RasterPlot(dsv,ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neurons' : spike_ids,'trial_averaged_histogram': False, 'spontaneous' : False}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSExcRasterL4.png').plot({'SpikeRasterPlot.group_trials':True})
-        RasterPlot(dsv,ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neurons' : spike_ids_inh,'trial_averaged_histogram': False, 'spontaneous' : False}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSInhRasterL4.png').plot({'SpikeRasterPlot.group_trials':True})
-
-        if l23_flag:
-            dsv = param_filter_query(data_store,st_name=['InternalStimulus'],st_direct_stimulation_name=None)
-            OverviewPlot(dsv,ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neuron' : analog_ids23[0], 'sheet_activity' : {}, 'spontaneous' : True}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSExcAnalogL23.png').plot()
-            OverviewPlot(dsv,ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neuron' : analog_ids_inh23[0], 'sheet_activity' : {}, 'spontaneous' : True}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSInhAnalogL23.png').plot()
-
-            RasterPlot(dsv,ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neurons' : spike_ids23,'trial_averaged_histogram': False, 'spontaneous' : False}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSExcRasterL23.png').plot({'SpikeRasterPlot.group_trials':True})
-            RasterPlot(dsv,ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neurons' : spike_ids_inh23,'trial_averaged_histogram': False, 'spontaneous' : False}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name='SSInhRasterL23.png').plot({'SpikeRasterPlot.group_trials':True})
-
-
-        if l23_flag:
-            SpontActOverview(data_store,ParameterSet({'l4_exc_neuron' : analog_ids[0], 'l4_inh_neuron' : analog_ids_inh[0],'l23_exc_neuron' : analog_ids23[0],'l23_inh_neuron' : analog_ids_inh23[0]}),plot_file_name='SpontActOverview.png', fig_param={'dpi' : dpi,'figsize': (15,12)}).plot()
-            SpontStatisticsOverview(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (15,10)},plot_file_name='SpontStatisticsOverview.png').plot()
-        else:
-            SpontActOverview(data_store,ParameterSet({'l4_exc_neuron' : analog_ids[0], 'l4_inh_neuron' : analog_ids_inh[0],'l23_exc_neuron' : -1,'l23_inh_neuron' : -1}),plot_file_name='SpontActOverview.png', fig_param={'dpi' : dpi,'figsize': (15,12)}).plot()
-            SpontStatisticsOverview(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (15,10)},plot_file_name='SpontStatisticsOverview.png').plot()
-
+        for sheet in sheets:
+            fig_name = sheet.replace("/", "")
+            OverviewPlot(dsv,ParameterSet({'sheet_name' : sheet, 'neuron' : analog_ids[sheet][0], 'sheet_activity' : {}, 'spontaneous' : True}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name=f'SSAnalog_{fig_name}.png').plot()
+            RasterPlot(dsv,ParameterSet({'sheet_name' : sheet, 'neurons' : spike_ids[sheet],'trial_averaged_histogram': False, 'spontaneous' : False}),fig_param={'dpi' : 100,'figsize': (28,12)},plot_file_name=f'SSRaster_{fig_name}.png').plot({'SpikeRasterPlot.group_trials':True})
+        SpontStatisticsOverviewAllLayers(data_store,ParameterSet({}), fig_param={'dpi' : dpi,'figsize': (20,20)},plot_file_name='SpontStatisticsOverview.png').plot()
+        SpontActOverviewAllLayers(data_store,
+            ParameterSet({
+                'l4_exc_neuron' : analog_ids.get('V1_Exc_L4', [-1])[0],
+                'l4_inh_neuron' : analog_ids.get('V1_Inh_L4', [-1])[0],
+                'l23_exc_neuron' : analog_ids.get('V1_Exc_L2/3', [-1])[0],
+                'l23_inh_neuron' : analog_ids.get('V1_Inh_L2/3', [-1])[0],
+                'l5_exa_neuron' : analog_ids.get('V1_Exa_L5', [-1])[0],
+                'l5_exb_neuron' : analog_ids.get('V1_Exb_L5', [-1])[0],
+                'l5_inh_neuron' : analog_ids.get('V1_Inh_L5', [-1])[0],
+                'l6_exa_neuron' : analog_ids.get('V1_Exa_L6', [-1])[0],
+                'l6_exb_neuron' : analog_ids.get('V1_Exb_L6', [-1])[0],
+                'l6_inh_neuron' : analog_ids.get('V1_Inh_L6', [-1])[0],
+            }),
+            plot_file_name='SpontActOverview.png', 
+            fig_param={'dpi' : dpi,'figsize': (15,20)}).plot()

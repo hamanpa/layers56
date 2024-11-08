@@ -8,6 +8,7 @@ from mozaik.space import VisualRegion
 
 
 class SelfSustainedPushPull(Model):
+    """"""
 
     required_parameters = ParameterSet({
         'sheets': ParameterSet({
@@ -23,6 +24,10 @@ class SelfSustainedPushPull(Model):
             'l6_cortex_inh': ParameterSet,
             'retina_lgn': ParameterSet}),
         'visual_field': ParameterSet,
+        'density_frac' : float,
+        'l5_density_ratio' : float,
+        'l5_conn_ratio' : float,
+        'l5a_density' : float,
         'only_afferent': bool,
         'l23': bool,
         'l5': bool,
@@ -77,10 +82,11 @@ class SelfSustainedPushPull(Model):
             self, self.parameters.sheets.l4_cortex_inh.params)
 
         # same as layer 4, recipient of connections from LGN
-        cortex_exa_l6 = CortexExaL6(
-            self, self.parameters.sheets.l6_cortex_exa.params)
-        cortex_inh_l6 = CortexInhL6(
-            self, self.parameters.sheets.l6_cortex_inh.params)
+        if self.parameters.l6:
+            cortex_exa_l6 = CortexExaL6(
+                self, self.parameters.sheets.l6_cortex_exa.params)
+            cortex_inh_l6 = CortexInhL6(
+                self, self.parameters.sheets.l6_cortex_inh.params)
 
         if not self.parameters.only_afferent:
             if self.parameters.l23:
@@ -105,33 +111,30 @@ class SelfSustainedPushPull(Model):
                        self.input_layer.sheets['X_OFF'],
                        cortex_exc_l4, 
                        self.parameters.sheets.l4_cortex_exc.AfferentConnection, 
-                       'V1AffConnection')
+                       'V1AffL4ExcConnection')
         GaborConnector(self, 
                        self.input_layer.sheets['X_ON'], 
                        self.input_layer.sheets['X_OFF'],
                        cortex_inh_l4, 
                        self.parameters.sheets.l4_cortex_inh.AfferentConnection, 
-                       'V1AffInhConnection')
+                       'V1AffL4InhConnection')
 
-        # initialize afferent layer 6 projections
-        GaborConnector(self, 
-                       self.input_layer.sheets['X_ON'], 
-                       self.input_layer.sheets['X_OFF'],
-                       cortex_exa_l6,
-                       self.parameters.sheets.l6_cortex_exa.AfferentConnection, 
-                       'V1AffConnection')
-        GaborConnector(self, 
-                       self.input_layer.sheets['X_ON'], 
-                       self.input_layer.sheets['X_OFF'],
-                       cortex_inh_l6, 
-                       self.parameters.sheets.l6_cortex_inh.AfferentConnection, 
-                       'V1AffInhConnection')
+        if self.parameters.l6:
+            # initialize afferent layer 6 projections
+            GaborConnector(self, 
+                        self.input_layer.sheets['X_ON'], 
+                        self.input_layer.sheets['X_OFF'],
+                        cortex_exa_l6,
+                        self.parameters.sheets.l6_cortex_exa.AfferentConnection, 
+                        'V1AffL6ExaConnection')
+            GaborConnector(self, 
+                        self.input_layer.sheets['X_ON'], 
+                        self.input_layer.sheets['X_OFF'],
+                        cortex_inh_l6, 
+                        self.parameters.sheets.l6_cortex_inh.AfferentConnection, 
+                        'V1AffL6InhConnection')
 
         # initialize lateral layer 4 projections
-
-
-        # TODO: rozmyslet si ty ify, jake kombinace muzou nastat a jake bych 
-        # chtel testovat
 
 
         if not self.parameters.only_afferent:
@@ -184,7 +187,7 @@ class SelfSustainedPushPull(Model):
                     'V1L4ExcL23InhConnection', 
                     cortex_exc_l4,
                     cortex_inh_l23, 
-                    self.parameters.sheets.l4_cortex_inh.L4ExcL23InhConnection
+                    self.parameters.sheets.l4_cortex_exc.L4ExcL23InhConnection
                 ).connect()
                 
                 # initialize lateral projections in layer 2/3
@@ -321,7 +324,7 @@ class SelfSustainedPushPull(Model):
                         'V1L23ExcL5InhConnection', 
                         cortex_exc_l23,
                         cortex_inh_l5, 
-                        self.parameters.sheets.l23_cortex_inh.L23ExcL5InhConnection
+                        self.parameters.sheets.l23_cortex_exc.L23ExcL5InhConnection
                     ).connect()
 
             if self.parameters.l6:
@@ -406,7 +409,7 @@ class SelfSustainedPushPull(Model):
                         'V1L5ExbL6ExaConnection', 
                         cortex_exb_l5,
                         cortex_exa_l6,
-                        self.parameters.sheets.l5_cortex_exb.L5ExaL6ExaConnection
+                        self.parameters.sheets.l5_cortex_exb.L5ExbL6ExaConnection
                     ).connect()
                     
                     ModularSamplingProbabilisticConnector(
@@ -414,7 +417,7 @@ class SelfSustainedPushPull(Model):
                         'V1L5ExbL6ExbConnection', 
                         cortex_exb_l5,
                         cortex_exb_l6,
-                        self.parameters.sheets.l5_cortex_exb.L5ExaL6ExbConnection
+                        self.parameters.sheets.l5_cortex_exb.L5ExbL6ExbConnection
                     ).connect()
 
                     ModularSamplingProbabilisticConnector(
@@ -422,7 +425,7 @@ class SelfSustainedPushPull(Model):
                         'V1L5ExbL6InhConnection', 
                         cortex_exb_l5,
                         cortex_inh_l6,
-                        self.parameters.sheets.l5_cortex_exb.L5ExaL6InhConnection
+                        self.parameters.sheets.l5_cortex_exb.L5ExbL6InhConnection
                     ).connect()
 
             if (self.parameters.l23 and self.parameters.l5 

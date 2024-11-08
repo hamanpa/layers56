@@ -24,6 +24,945 @@ low_contrast=10
 ttcc_contrast=30
 high_contrast=100
 
+class SpontActOverviewAllLayers(Plotting):
+
+    """
+    This figure shows example of spontaneous activity in the model. 
+      
+    Parameters
+    ----------
+    l4_exc_neuron : str
+               The name of the sheet corresponding to layer 4 excitatory neurons.
+              
+    l23_exc_neuron : str
+          The name of the sheet corresponding to layer 2/3 excitatory neurons.
+
+
+    l4_inh_neuron : str
+               The name of the sheet corresponding to layer 4 inhibitory neurons.
+              
+    l23_inh_neuron : str
+          The name of the sheet corresponding to layer 2/3 inhibitory neurons.
+
+    """
+
+    required_parameters = ParameterSet({
+        'l4_exc_neuron' : int,
+        'l4_inh_neuron' : int,
+        'l23_exc_neuron' : int,
+        'l23_inh_neuron' : int,
+        'l5_exa_neuron' : int,
+        'l5_exb_neuron' : int,
+        'l5_inh_neuron' : int,
+        'l6_exa_neuron' : int,
+        'l6_exb_neuron' : int,
+        'l6_inh_neuron' : int,
+    })
+
+    def subplot(self, subplotspec):
+        # May not work if there are sheets for which no spikes are recorded!!!
+
+        sheets = [x for x in self.datastore.sheets() if 'V1' in x]
+        sheets = sorted(sheets,key=lambda x: x.split("_")[2] + x.split("_")[1])
+        # sheets = []
+        # if self.parameters.l23_exc_neuron != -1:
+        #     sheets.append('V1_Exc_L2/3')
+        #     sheets.append('V1_Inh_L2/3')
+        # if self.parameters.l4_exc_neuron != -1:
+        #     sheets.append('V1_Exc_L4')
+        #     sheets.append('V1_Inh_L4')
+        # if self.parameters.l5_exa_neuron != -1:
+        #     sheets.append('V1_Exa_L5')
+        #     sheets.append('V1_Exb_L5')
+        #     sheets.append('V1_Inh_L5')
+        # if self.parameters.l6_exa_neuron != -1:
+        #     sheets.append('V1_Exa_L6')
+        #     sheets.append('V1_Exb_L6')
+        #     sheets.append('V1_Inh_L6')
+        
+        analog_ids1 = sorted(numpy.random.permutation(queries.param_filter_query(self.datastore,sheet_name=sheets[0]).get_segments()[0].get_stored_esyn_ids()))
+        tstop = queries.param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name="InternalStimulus",sheet_name = sheets[0]).get_segments()[0].get_vm(analog_ids1[0]).t_stop.magnitude
+        tstop = min(5000,tstop)
+
+        spike_ids = dict()
+        for sheet in sheets:
+            spike_ids[sheet] = param_filter_query(self.datastore,sheet_name=sheet).get_segments()[0].get_stored_spike_train_ids()
+
+        def parse_densities(param_str, relative_sheet='V1_Inh_L4'):
+            """
+            density_fractions = {
+                'V1_Exc_L2/3' : 3.86,
+                'V1_Inh_L2/3' : 0.965,
+                'V1_Exc_L4' : 4,
+                'V1_Inh_L4' : 1,
+                'V1_Exa_L5' : 0.164,
+                'V1_Exb_L5' : 0.656,
+                'V1_Inh_L5' : 0.205,
+                'V1_Exa_L6' : 1.18,
+                'V1_Exb_L6' : 1.18,
+                'V1_Inh_L6' : 0.59,
+            }
+            """
+            import re
+
+            pattern = r'"name"\s*:\s*"(V1_\w*_L[\w/]*)"[\w\W]*?"density"\s*:\s*([\d.]+)'
+            matches = re.findall(pattern, param_str)
+            density_fracs = {}
+            for key, val in matches:
+                density_fracs[key] = float(val)
+            weight = density_fracs[relative_sheet]
+            for key in density_fracs:
+                density_fracs[key] = density_fracs[key] / weight
+
+            return density_fracs
+
+
+        density_fractions = parse_densities(self.datastore.get_model_parameters())
+        max_number_of_spikes = 100
+
+        spikes = [max_number_of_spikes]
+        for sheet in sheets:
+            spikes.append(numpy.floor(len(spike_ids[sheet])/density_fractions[sheet]))
+        d = int(numpy.min(spikes))
+        neuron_ids = []
+        for sheet in sheets:
+                num_spikes = int(d*density_fractions[sheet])
+                neuron_ids.append(spike_ids[sheet][:num_spikes])
+
+        colors = []
+        labels = []
+        for sheet in sheets:
+            label = sheet.split('_')[2] + sheet.split('_')[1]
+            labels.append(label)
+            if 'Inh' in sheet:
+                colors.append('#0000FF')
+            elif 'Exb' in sheet:
+                colors.append('#FF7777')
+            else:
+                colors.append('#FF0000')
+            
+        plots = {}
+        height = len(sheets)*3
+        gs = gridspec.GridSpecFromSubplotSpec(height,3, subplot_spec=subplotspec,hspace=0.3, wspace=0.45)
+        fontsize=14
+
+        dsv = param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name=['InternalStimulus'])
+
+        plots['SpikingOverview'] = (CorticalColumnRasterPlot(dsv,ParameterSet({'spontaneous' : False, 'sheet_names' : sheets[::-1], 'neurons' : neuron_ids[::-1], 'colors' : colors[::-1], 'labels' : labels[::-1]})),gs[:,0],{'fontsize' : fontsize,'x_lim' : (0,tstop/1000)})
+        max_i = len(sheets) -1
+        for i, sheet in enumerate(sheets):
+            neuron_name = sheet.lower().replace('/','')
+            neuron_name = neuron_name.split('_')[2] + '_' + neuron_name.split('_')[1]
+            neuron = eval('self.parameters.' + neuron_name + '_neuron')
+            if i < max_i:
+                # 'separated' : False merges the two plots in one
+                plots[sheet + 'Cond'] = (GSynPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : neuron, 'separated' : True, 'spontaneous' : False})),gs[i*3:i*3+2,1:],{'x_label': None,'fontsize' : fontsize, 'x_ticks' : [],'title' : None,'x_lim' : (0,tstop),'y_lim' : (0,15),'y_axis' : None})
+                plots[sheet + 'Vm'] = (VmPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : neuron, 'spontaneous' : False})),gs[i*3+2,1:],{'x_label': None,'fontsize' : fontsize, 'x_ticks' : [],'title' : None,'x_lim' : (0,tstop), 'y_ticks' : [], 'y_label' : labels[i]}) 
+            else:
+                plots[sheet + 'Cond'] = (GSynPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : neuron, 'separated' : True, 'spontaneous' : False})),gs[i*3:i*3+2,1:],{'x_label': None,'fontsize' : fontsize, 'x_ticks' : [],'title' : None,'x_lim' : (0,tstop),'y_lim' : (0,15)})
+                plots[sheet + 'Vm'] = (VmPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : neuron, 'spontaneous' : False})),gs[i*3+2,1:],{'fontsize' : fontsize, 'title' : None,'x_lim' : (0,tstop)})
+                
+        return plots
+
+class SpontStatisticsOverviewAllLayers(Plotting):
+    """This class is similar to SpontStatisticsOverview but plots all layers.
+    
+    """
+    required_parameters = ParameterSet({
+
+    })
+
+    def subplot(self, subplotspec):
+
+        dsv = param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name=['InternalStimulus'])    
+        
+        all_sheets = [
+            'V1_Exc_L2/3', 
+            'V1_Inh_L2/3', 
+            'V1_Exc_L4', 
+            'V1_Inh_L4', 
+            'V1_Exa_L5', 
+            'V1_Exb_L5', 
+            'V1_Inh_L5', 
+            'V1_Exa_L6', 
+            'V1_Exb_L6', 
+            'V1_Inh_L6'
+        ]
+
+        sheets = []
+        for result in param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name='InternalStimulus',analysis_algorithm='PopulationMeanAndVar',identifier='SingleValue',value_name='Mean(Firing rate)').get_analysis_result():
+            sheets.append(result.sheet_name)
+
+
+
+        spike_ids = dict()
+        idx = dict()
+        for sheet in sheets:
+            spike_ids[sheet] = numpy.array(param_filter_query(self.datastore,sheet_name=sheet).get_segments()[0].get_stored_spike_train_ids())
+            idx[sheet] = self.datastore.get_sheet_indexes(sheet_name=sheet,neuron_ids=spike_ids[sheet])            
+
+        # center neurons
+        x = dict()
+        y = dict()
+        center = dict()
+        for sheet in sheets:
+            x[sheet] = self.datastore.get_neuron_positions()[sheet][0][idx[sheet]]
+            y[sheet] = self.datastore.get_neuron_positions()[sheet][1][idx[sheet]]
+            center[sheet] = spike_ids[sheet][numpy.nonzero(numpy.sqrt(numpy.multiply(x[sheet],x[sheet])+numpy.multiply(y[sheet],y[sheet])) < 0.5)[0]]
+
+        mean_and_std = lambda x : (numpy.mean(x), numpy.std(x))
+
+        mean_firing_rate = dict()
+        std_firing_rate = dict()
+        
+        mean_cv = dict()
+        std_cv = dict()
+        
+        mean_cc = dict()
+        std_cc = dict()
+
+        mean_vm = dict()
+        std_vm = dict()
+
+        mean_cond_e = dict()
+        std_cond_e = dict()
+
+        mean_cond_i = dict()
+        std_cond_i = dict()
+
+        for sheet in sheets:
+            mean_firing_rate[sheet] = param_filter_query(self.datastore, st_direct_stimulation_name=None, st_name='InternalStimulus', analysis_algorithm='PopulationMeanAndVar', sheet_name=sheet, identifier='SingleValue', value_name='Mean(Firing rate)', ads_unique=True).get_analysis_result()[0].value
+            std_firing_rate[sheet] = numpy.sqrt(param_filter_query(self.datastore, st_direct_stimulation_name=None, st_name='InternalStimulus', analysis_algorithm='PopulationMeanAndVar',sheet_name=sheet ,identifier='SingleValue',value_name='Var(Firing rate)',ads_unique=True).get_analysis_result()[0].value)
+
+            s = queries.param_filter_query(self.datastore, st_name='InternalStimulus', sheet_name=sheet).get_segments()[0]
+            isis = [numpy.diff(st.magnitude) for st in s.spiketrains]  # InterSpike Intervals
+            idxs = numpy.array([len(isi) for isi in isis]) > 5
+            mean_cv[sheet], std_cv[sheet] = mean_and_std(numpy.array([numpy.std(isi)/numpy.mean(isi) for isi in isis])[idxs])
+
+            s = queries.param_filter_query(self.datastore, st_name='InternalStimulus', sheet_name=sheet, value_name='Correlation coefficient(psth (bin=10.0))', ads_unique=True).get_analysis_result()[0]
+            mean_cc[sheet], std_cc[sheet] = mean_and_std(numpy.array(s.values)[idxs, :][:, idxs][numpy.triu_indices(sum(idxs == True), 1)])
+
+            mean_vm[sheet], std_vm[sheet] = mean_and_std(param_filter_query(self.datastore, sheet_name=sheet, st_direct_stimulation_name=None, st_name=['InternalStimulus'], analysis_algorithm='Analog_MeanSTDAndFanoFactor', value_name='Mean(VM)', ads_unique=True).get_analysis_result()[0].values)
+
+            mean_cond_e[sheet], std_cond_e[sheet] = mean_and_std(param_filter_query(self.datastore,sheet_name=sheet,st_direct_stimulation_name=None,st_name=['InternalStimulus'],analysis_algorithm='Analog_MeanSTDAndFanoFactor',value_name='Mean(ECond)',ads_unique=True).get_analysis_result()[0].values)
+            mean_cond_e[sheet], std_cond_e[sheet] = mean_cond_e[sheet] * 1000, std_cond_e[sheet] * 1000
+            mean_cond_i[sheet], std_cond_i[sheet] = mean_and_std(param_filter_query(self.datastore,sheet_name=sheet,st_direct_stimulation_name=None,st_name=['InternalStimulus'],analysis_algorithm='Analog_MeanSTDAndFanoFactor',value_name='Mean(ICond)',ads_unique=True).get_analysis_result()[0].values)
+            mean_cond_i[sheet], std_cond_i[sheet] = mean_cond_i[sheet] * 1000, std_cond_i[sheet] * 1000
+        for name, variable in zip(
+            ['Mean firing rate', 'Mean CC', 'Mean CV', 'Mean Vm', 'Mean excitatory conductance', 'Mean inhibitory conductance'],
+            [mean_firing_rate, mean_cc, mean_cv, mean_vm, mean_cond_e, mean_cond_i]):
+            for sheet in sheets:
+                logger.info(f'{name} of {sheet} : {mean_firing_rate[sheet]}')
+
+        # Not sure why the weights are 0.25 for inhibitory layers
+        mean_ECond = 0
+        mean_ICond = 0
+        total_weight = 0
+        for sheet in sheets:
+            if 'Inh' in sheet:
+                weight = 0.25
+            else:
+                weight = 1
+            mean_ECond += mean_cond_e[sheet] * weight
+            mean_ICond += mean_cond_i[sheet] * weight
+            total_weight += weight 
+        mean_ECond = mean_ECond / total_weight
+        mean_ICond = mean_ECond / total_weight
+
+        logger.info(f'mean_ECond : {mean_ECond}')
+        logger.info(f'mean_ICond : {mean_ICond}')
+
+        def autolabel(rects,offset=0.35):
+            # attach some text labels
+            for rect in rects:
+                height = rect.get_width()
+                pylab.gca().text(rect.get_x() + rect.get_width() + abs(pylab.gca().get_xlim()[0] - pylab.gca().get_xlim()[1])*offset, rect.get_y()+0.012,
+                        '%.2g' % float(height),
+                        ha='center', va='bottom',fontsize=17)
+
+        def barh_plot(gs, mean_data, std_data, label, fontsize, xmax=None, xmin=0, offset=0.35):
+            width = 0.12
+            bar_gap = 0.16  # width*4/3
+            layer_gap = 0.34
+
+            sheets = [
+                'V1_Exc_L2/3', 
+                'V1_Inh_L2/3', 
+                'V1_Exc_L4', 
+                'V1_Inh_L4', 
+                'V1_Exa_L5', 
+                'V1_Exb_L5', 
+                'V1_Inh_L5', 
+                'V1_Exa_L6', 
+                'V1_Exb_L6', 
+                'V1_Inh_L6'
+            ]
+
+            sheet_vals = numpy.zeros(len(sheets))
+            sheet_val = 0
+            for i, sheet in enumerate(sheets):
+                sheet_vals[i] = sheet_val
+                if 'Inh' in sheet:
+                    sheet_val -= layer_gap
+                else:
+                    sheet_val -= bar_gap    
+            sheet_vals = sheet_vals - sheet_vals[-1] + 0.17
+            sheet_vals = dict(zip(sheets, numpy.round(sheet_vals, 2)))
+
+            sheet_ticks = [0.33, 0.99, 1.57, 2.07]
+
+            pylab.subplot(gs)
+            plts = []
+            for sheet in mean_data.keys():
+                if 'Inh' in sheet:
+                    color = '#FFFFFF'
+                else:
+                    color = '#000000'
+                plts.append(pylab.barh(sheet_vals[sheet], numpy.abs(mean_data[sheet]), height=width, color=color, edgecolor='#000000', xerr=std_data[sheet], error_kw=dict(ecolor='gray', lw=2, capsize=5, capthick=2)))
+
+            pylab.ylim(0,2.3) 
+            if xmax:
+                pylab.xlim(xmin, xmax)
+            else:
+                xmax = 0
+                for value in mean_data.values():
+                    if numpy.abs(value).max() > xmax:
+                        xmax = numpy.abs(value).max()
+                pylab.xlim(xmin, xmax*1.3)
+
+            pylab.yticks(sheet_ticks, ['L6', 'L5', 'L4', 'L2/3'])
+            pylab.xlabel(label, fontsize=fontsize)
+            
+            phf.three_tick_axis(pylab.gca().xaxis)
+            for label in pylab.gca().get_xticklabels() + pylab.gca().get_yticklabels():
+                label.set_fontsize(fontsize)
+            phf.disable_top_right_axis(pylab.gca())
+
+            for plot in plts:
+                autolabel(plot, offset=offset)
+
+        def plot_with_log_normal_fit(values,gs1,gs2,x_label=False,y_label=""):
+            valuesnz = values[numpy.nonzero(values)[0]]
+            h,bin_edges = numpy.histogram(numpy.log10(valuesnz),range=(-2,2),bins=20,density=True)
+            bin_centers = bin_edges[:-1] + (bin_edges[1:] - bin_edges[:-1])/2.0
+            
+            m = numpy.mean(numpy.log10(valuesnz))
+            nm = numpy.mean(valuesnz)
+            s = numpy.std(numpy.log10(valuesnz))
+            if s == 0: 
+               s=1.0
+
+            pylab.subplot(gs1)
+            pylab.plot(numpy.logspace(-2,2,100),numpy.exp(-((numpy.log10(numpy.logspace(-2,2,100))-m)**2)/(2*s*s))/(s*numpy.sqrt(2*numpy.pi)),linewidth=4,color="#666666")
+            pylab.plot(numpy.power(10,bin_centers),h,'ko',mec=None,mew=3)
+            pylab.xlim(10**-2,10**2)
+            pylab.gca().set_xscale("log")
+            if x_label:
+                pylab.xlabel('firing rate [sp/s]',fontsize=fontsize)
+                pylab.xticks([0.01,0.1,1.0,10,100])
+            else:
+                pylab.xticks([])
+            pylab.ylabel(y_label,fontsize=fontsize)                
+            #pylab.yticks([0.0,0.5,1.0])
+            for label in pylab.gca().get_xticklabels() + pylab.gca().get_yticklabels():
+                label.set_fontsize(fontsize)
+            phf.disable_top_right_axis(pylab.gca())
+            
+            pylab.subplot(gs2)
+            pylab.plot(numpy.logspace(-1,2,100),numpy.exp(-((numpy.log10(numpy.logspace(-1,2,100))-m)**2)/(2*s*s))/(s*numpy.sqrt(2*numpy.pi)),linewidth=4,color="#666666")
+            pylab.plot(numpy.logspace(-1,2,100),numpy.exp(-numpy.logspace(-1,2,100)/nm)/nm,'k--',linewidth=4)
+            pylab.plot(numpy.power(10,bin_centers),h,'ko',mec=None,mew=3)
+            pylab.xlim(10**-1,10**2)
+            pylab.ylim(0.00001,5.0)
+            pylab.gca().set_xscale("log")
+            pylab.gca().set_yscale("log")
+            if x_label:
+                pylab.xlabel('firing rate [sp/s]',fontsize=fontsize)
+                pylab.xticks([0.1,1.0,10,100])
+            else:
+                pylab.xticks([])
+            pylab.yticks([0.0001,0.01,1.0])
+            for label in pylab.gca().get_xticklabels() + pylab.gca().get_yticklabels():
+                label.set_fontsize(fontsize)
+            phf.disable_top_right_axis(pylab.gca())
+        
+
+        plots = {}
+        fontsize = 20
+        pylab.rc('axes', linewidth=1)
+
+        if True:
+            gs = gridspec.GridSpecFromSubplotSpec(60,4, subplot_spec=subplotspec,hspace=10, wspace=0.8)
+
+            barh_plot(gs[0:18,0], mean_firing_rate, std_firing_rate, 'firing rate (sp/s)', fontsize)
+            # xmax=10.0, xmin=0.0
+            barh_plot(gs[20:38,0], mean_cv, std_cv, 'irregularity', fontsize, xmax=2.0, xmin=0.0, offset=0.37)
+            barh_plot(gs[40:58,0], mean_cc, std_cc, 'synchrony', fontsize, offset=0.4)
+            # xmax=0.15, xmin=0.0
+            barh_plot(gs[0:18,1], mean_vm, std_vm, 'membrane potential (mV)', fontsize, xmax=80.0, xmin=40.0)
+            barh_plot(gs[20:38,1], mean_cond_e, std_cond_e, 'excitatory conductance (nS)', fontsize, xmax=2.0, xmin=0.0) 
+            barh_plot(gs[40:58,1], mean_cond_i, std_cond_i, 'inhibitory conductance (nS)', fontsize, xmax=10.0, xmin=0.0)
+
+            valid_sheets = len(mean_firing_rate.keys())
+            plotted = 0
+            for i, sheet in enumerate(all_sheets):
+                if sheet in mean_firing_rate:
+                    label = sheet.split('_')[2] + sheet.split('_')[1][0]
+                    if plotted < valid_sheets-1:
+                        plot_with_log_normal_fit(param_filter_query(self.datastore,value_name=['Firing rate'],sheet_name=sheet,st_direct_stimulation_name=None,st_name=['InternalStimulus'],ads_unique=True).get_analysis_result()[0].values,gs[i*6:(i+1)*6,2],gs[i*6:(i+1)*6,3],y_label=label)
+                        plotted += 1
+                    else:
+                        plot_with_log_normal_fit(param_filter_query(self.datastore,value_name=['Firing rate'],sheet_name=sheet,st_direct_stimulation_name=None,st_name=['InternalStimulus'],ads_unique=True).get_analysis_result()[0].values,gs[i*6:(i+1)*6,2],gs[i*6:(i+1)*6,3],x_label=True,y_label=label)
+
+        return plots
+
+class OrientationTuningSummaryAnalogSignalsAllLayers(Plotting):
+
+    required_parameters = ParameterSet({
+        'sheet_names': list,
+    })
+
+    def subplot(self, subplotspec):
+        sheets_num = len(self.parameters.sheet_names)
+        analog_ids = dict()
+        or_tuning = dict()
+        for sheet in self.parameters.sheet_names:
+            analog_ids[sheet] = sorted(numpy.random.permutation(queries.param_filter_query(self.datastore, sheet_name=sheet).get_segments()[0].get_stored_esyn_ids()))
+            or_tuning[sheet] = self.datastore.get_analysis_result(identifier='PerNeuronValue', value_name='LGNAfferentOrientation', sheet_name=sheet)[0]
+            or_tuning[sheet] = None
+        # TODO: test or_tuning
+
+        plots = {}
+        gs = gridspec.GridSpecFromSubplotSpec(6*sheets_num, 35, subplot_spec=subplotspec, hspace=10.0, wspace=0.6)
+
+        for i, sheet in enumerate(self.parameters.sheet_names):
+            key_label = sheet.split('_')[2].replace("/","") + sheet.split('_')[1]
+            label = sheet.split('_')[2] + sheet.split('_')[1]
+            if i==0:
+                titles = ['F0 of Vm (mV)', 'F1 of Vm (mV)', 'F0 of gE (nS)', 'F1 of gE (nS)', 'F0 of gI (nS)', 'F1 of gI (nS)']
+            else:
+                titles = [None, None, None, None, None, None]
+
+            if i < sheets_num-1:
+                x_labels = {'x_axis': False, 'x_ticks': False}
+            else:
+                x_labels = {}
+
+            dsv = queries.param_filter_query(self.datastore, value_name=['-(x+y)(F0_Vm,Mean(VM))'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F0_Vm'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, :5], {'title': titles[0], 'x_label': None, 'y_label': label, 'y_tick_precision': 2, **x_labels})
+            dsv = queries.param_filter_query(self.datastore, value_name=['F1_Vm'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F1_Vm'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, 6:11], {'title': titles[1], 'x_label': None, 'y_label': None, 'x_axis': False, 'x_ticks': False, 'y_tick_precision': 2})
+            dsv = queries.param_filter_query(self.datastore, value_name=['F0_Exc_Cond-Mean(ECond)'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F0_CondExc'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, 12:17], {'title': titles[2], 'x_label': None, 'y_label': None, 'x_axis': False, 'x_ticks': False, 'y_tick_precision': 2})
+            dsv = queries.param_filter_query(self.datastore, value_name=['F1_Exc_Cond'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F1_CondExc'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, 18:23], {'title': titles[3], 'x_label': None, 'y_label': None, 'x_axis': False, 'x_ticks': False, 'y_tick_precision': 2})
+            dsv = queries.param_filter_query(self.datastore, value_name=['F0_Inh_Cond-Mean(ICond)'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F0_CondInh'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, 24:29], {'title': titles[4], 'x_label': None, 'y_label': None, 'x_axis': False, 'x_ticks': False, 'y_tick_precision': 2})
+            dsv = queries.param_filter_query(self.datastore, value_name=['F1_Inh_Cond'],st_contrast=[low_contrast,high_contrast])
+            plots[key_label + '_F1_CondInh'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name': 'orientation', 'neurons': list(analog_ids[sheet]), 'sheet_name': sheet, 'centered': True, 'mean': True, 'pool': False, 'polar': False}), centering_pnv=or_tuning[sheet]), gs[i*6:(i+1)*6, 30:35], {'title': titles[5], 'x_label': None, 'y_label': None, 'x_axis': False, 'x_ticks': False, 'y_tick_precision': 2})
+
+        return plots
+
+class OrientationTuningSummaryFiringRatesAllLayers(Plotting):
+
+    """
+    This figure plots summary of orientation tuning analysis in the model. 
+      
+    Parameters
+    ----------
+    exc_sheet_name1 : str
+               The name of the sheet corresponding to layer 4 excitatory neurons.
+              
+    exc_sheet_name2 : str
+          The name of the sheet corresponding to layer 2/3 excitatory neurons.
+
+
+    inh_sheet_name1 : str
+               The name of the sheet corresponding to layer 4 inhibitory neurons.
+              
+    inh_sheet_name2 : str
+          The name of the sheet corresponding to layer 2/3 inhibitory neurons.
+
+    """
+
+    # required_parameters = ParameterSet({
+    #     'exc_sheet_name1': str,  # the name of the sheet for which to plot
+    #     'inh_sheet_name1': str,  # the name of the sheet for which to plot
+    #     'exc_sheet_name2': str,  # the name of the sheet for which to plot
+    #     'inh_sheet_name2': str,  # the name of the sheet for which to plot
+    # })
+    required_parameters = ParameterSet({
+        'sheet_names': list,
+    })
+
+
+    def subplot(self, subplotspec):
+        plots = {}
+        sheets_num = len(self.parameters.sheet_names)
+        gs = gridspec.GridSpecFromSubplotSpec(7*sheets_num-1, 39, subplot_spec=subplotspec, hspace=1.0, wspace=5.0)
+        
+        mean_and_sem = lambda x : (numpy.mean(x), numpy.std(x)/numpy.sqrt(len(x)))
+
+        spike_ids = dict()
+        idxs = dict()
+        for sheet in self.parameters.sheet_names:
+            spike_ids[sheet] = numpy.array(sorted(numpy.random.permutation(queries.param_filter_query(self.datastore, sheet_name=sheet).get_segments()[0].get_stored_spike_train_ids())))
+            idxs[sheet] = self.datastore.get_sheet_indexes(sheet_name=sheet, neuron_ids=spike_ids[sheet])
+            x = self.datastore.get_neuron_positions()[sheet][0][idxs[sheet]]
+            y = self.datastore.get_neuron_positions()[sheet][1][idxs[sheet]]
+            spike_ids[sheet] = spike_ids[sheet][numpy.nonzero(numpy.sqrt(numpy.multiply(x,x)+numpy.multiply(y,y)) < 0.9)[0]]
+
+        spont_pnv = dict()
+        for sheet in self.parameters.sheet_names:
+            spont_pnv[sheet] = param_filter_query(self.datastore,st_name='InternalStimulus',analysis_algorithm=['TrialAveragedFiringRate'],value_name='Firing rate',sheet_name=sheet,ads_unique=True).get_analysis_result()[0]
+
+        r = 1.0
+        responsive_spike_ids = dict()
+        sheets_base = dict()
+        sheets_mmax = dict()
+        sheets_rura = dict()
+        for sheet in self.parameters.sheet_names:
+            base = queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=low_contrast, value_name=['orientation baseline of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(spike_ids[sheet])
+            mmax = queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=low_contrast, value_name=['orientation max of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(spike_ids[sheet])
+            err = queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=high_contrast, value_name=['orientation fitting error of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(spike_ids[sheet])
+            err_lc = queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=low_contrast, value_name=['orientation fitting error of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(spike_ids[sheet])
+            responsive_spike_ids[sheet] = numpy.array(spike_ids[sheet])[numpy.logical_and(numpy.logical_and(numpy.array(base)+numpy.array(mmax) > r, numpy.array(err) <= 0.3), numpy.array(err_lc) <= 0.3)]
+            base = numpy.array(queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=high_contrast, value_name=['orientation baseline of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(responsive_spike_ids[sheet]))
+            mmax = numpy.array(queries.param_filter_query(self.datastore, sheet_name=sheet, st_name=['FullfieldDriftingSinusoidalGrating'], st_contrast=high_contrast, value_name=['orientation max of Firing rate'], ads_unique=True).get_analysis_result()[0].get_value_by_id(responsive_spike_ids[sheet]))
+            idx = numpy.logical_and(base>=0,mmax>=0)
+            base = base[idx]
+            mmax = mmax[idx]
+            sp = numpy.array(spont_pnv[sheet].get_value_by_id(responsive_spike_ids[sheet]))[idx]
+            sheets_base[sheet] = base
+            sheets_mmax[sheet] = mmax
+            sheets_rura[sheet] = ((numpy.array(base)-numpy.array(sp))/(numpy.array(base)+numpy.array(mmax)-numpy.array(sp)))[numpy.array(base)+numpy.array(mmax) > r]
+            print('Removed \% of neurons:' + str(float(len(spike_ids[sheet])-len(responsive_spike_ids[sheet]))/len(spike_ids[sheet])))
+
+        dsv = queries.param_filter_query(self.datastore, st_name='FullfieldDriftingSinusoidalGrating', analysis_algorithm=['TrialAveragedFiringRate'], st_contrast=[low_contrast, high_contrast], value_name='Firing rate')
+        for i, sheet in enumerate(self.parameters.sheet_names):
+            # expected name of sheet is eg. "V1_Exc_L4"
+            pop_type = sheet.split('_')[1]
+            layer = sheet.split('_')[2].replace("/","")
+            y_label = f"Layer {layer} ({pop_type.upper()})\n\nfiring rate (sp/s)"
+            if i == sheets_num-1:
+                x_labels = {}
+            else:
+                x_labels = {'x_label': None, 'x_ticks': None}
+
+            plots[f'{pop_type}ORTCMean{layer}'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name' : 'orientation', 'neurons': list(spike_ids[sheet]), 'sheet_name' : sheet,'centered'  : True,'mean' : True,'pool' : False,'polar' : False}), spont_level_pnv=spont_pnv[sheet]),gs[i*7:i*7+6, :6],{'y_lim' : (0,None),'title' : None, 'y_label' : y_label, 'linestyles' : ['--','-','-'], **x_labels})
+            if len(responsive_spike_ids[sheet]) > 0:
+                plots[f'{pop_type}ORTC1{layer}'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name' : 'orientation', 'neurons': list(responsive_spike_ids[sheet][0:3]), 'sheet_name' : sheet,'centered'  : True,'mean' : False,'pool' : False,'polar' : False}), spont_level_pnv=spont_pnv[sheet]),gs[i*7:i*7+3, 6:15],{'y_lim' : (0,None),'title' : None,'left_border' : None, 'x_label' : None,'y_axis' : False,'x_axis' : False, 'x_ticks' : False, 'linestyles' : ['--','-','-']})
+            if len(responsive_spike_ids[sheet]) > 3:
+                plots[f'{pop_type}ORTC2{layer}'] = (PlotTuningCurve(dsv, ParameterSet({'parameter_name' : 'orientation', 'neurons': list(responsive_spike_ids[sheet][3:6]), 'sheet_name' : sheet,'centered'  : True,'mean' : False,'pool' : False,'polar': False}), spont_level_pnv=spont_pnv[sheet]),gs[i*7+3:i*7+6, 6:15],{'y_lim' : (0,None),'title' : None,'left_border' : None, 'x_label' : None,'y_axis' : False,'x_axis' : False, 'linestyles' : ['--','-','-']})
+
+
+        sheets_hc = dict()
+        for i, sheet in enumerate(self.parameters.sheet_names):
+            # expected name of sheet is eg. "V1_Exc_L4"
+            pop_type = sheet.split('_')[1]
+            layer = sheet.split('_')[2].replace("/","")
+            if i == sheets_num-1:
+                x_labels = {'x_label' : f'HWHH Cont. {high_contrast}%'}
+            else:
+                x_labels = {'x_label': None}
+
+            dsv1 = queries.param_filter_query(self.datastore,value_name=['orientation HWHH of Firing rate'],sheet_name=[sheet], st_contrast =[low_contrast,high_contrast])
+            dsv = queries.param_filter_query(dsv1,st_contrast=low_contrast)
+            b = numpy.array(dsv.get_analysis_result()[0].get_value_by_id(responsive_spike_ids[sheet]))
+            dsv = queries.param_filter_query(dsv1,st_contrast=high_contrast)
+            a = numpy.array(dsv.get_analysis_result()[0].get_value_by_id(responsive_spike_ids[sheet]))
+            lc = b[numpy.logical_and(numpy.logical_and(a>0,b>0),numpy.logical_and(a<200,b<200))]
+            hc = a[numpy.logical_and(numpy.logical_and(a>0,b>0),numpy.logical_and(a<200,b<200))]
+            print('Removed \% of neurons:' + str(float(len(spike_ids[sheet])-len(hc))/len(spike_ids[sheet])))
+            print(f"{layer}{pop_type} Mean HWHH: {mean_and_sem(hc)}")
+            print("LC_HC diff: "+  str(mean_and_sem((hc-lc)[abs(hc-lc)< 50])) + ' p=' + str( scipy.stats.ttest_rel(hc[abs(hc-lc)< 50],lc[abs(hc-lc)< 50])))
+            mean_hwhh = round(mean_and_sem(hc)[0],2)
+            diff_hwhh = str(round(mean_and_sem((hc-lc)[abs(hc-lc)< 50])[0],2))
+            dsv1.sort_analysis_results('st_contrast', reverse=True)
+
+            plots[f'HWHH{pop_type}{layer}'] = (PerNeuronValueScatterPlot(dsv1, ParameterSet({'only_matching_units' : True, 'ignore_nan' : True, 'lexicographic_order': True, 'neuron_ids': list(responsive_spike_ids[sheet])})),gs[i*7:i*7+6,17:23],{'x_lim': (0,50),'y_lim' : (0,50),'identity_line' : True, 'y_label' : 'HWHH cont. '+str(low_contrast)+'%', 'cmp' : None,'title' : None, 'dot_size' : 10, **x_labels})
+            sheets_hc[sheet] = hc
+
+        hc_exc = []
+        hc_inh = []
+        for sheet in sheets_hc:
+            if 'ex' in sheet.lower():
+                hc_exc += sheets_hc[sheet].tolist()
+            else:
+                hc_inh += sheets_hc[sheet].tolist()
+        print("HWHH Exc: " +str( mean_and_sem(hc_exc)))
+        print("HWHH Inh: " +str( mean_and_sem(hc_inh)))
+
+        for i, sheet in enumerate(self.parameters.sheet_names):
+            # expected name of sheet is eg. "V1_Exc_L4"
+            pop_type = sheet.split('_')[1]
+            layer = sheet.split('_')[2].replace("/","")
+
+            if i == sheets_num-1:
+                x_labels = {'x_label' : f'HWHH ({high_contrast}% cont.)'}
+            else:
+                x_labels = {'x_label': None}
+
+            dsv = queries.param_filter_query(self.datastore,value_name=['orientation HWHH of Firing rate'],sheet_name=[sheet], st_contrast=[high_contrast])
+            plots[f'HWHHHistogram{pop_type}{layer}'] = (PerNeuronValuePlot(dsv, ParameterSet({'cortical_view' : False, 'neuron_ids':list(responsive_spike_ids[sheet])})),gs[i*7:i*7+6,26:32],{ 'x_lim' : (0.0,50.0), 'title' : None,'y_label' : '# neurons', **x_labels})
+
+        for i, sheet in enumerate(self.parameters.sheet_names):
+            # expected name of sheet is eg. "V1_Exc_L4"
+            pop_type = sheet.split('_')[1]
+            layer = sheet.split('_')[2].replace("/","")
+
+            axis = pylab.subplot(gs[i*7:i*7+6,33:39])
+            pylab.hist(sheets_rura[sheet]*100, color='k', bins=numpy.arange(-20,40,3))
+            pylab.xlim(-20,40)
+            pylab.xticks([-20,10,40])
+            pylab.ylabel('# neurons',fontsize=19)
+            for label in axis.get_xticklabels() + axis.get_yticklabels():
+                label.set_fontsize(19)
+            phf.disable_top_right_axis(pylab.gca())
+            phf.three_tick_axis(axis.yaxis ,log=False, precision = 3)
+            xtls = axis.get_xticklabels()
+            for xtl in xtls:
+                x,y = xtl.get_position()
+                xtl.set_position((x,y-0.032))
+            #phf.disable_left_axis(pylab.gca())
+            if i == sheets_num-1:
+                pylab.xlabel('RURA',fontsize=19)
+            print(f"{layer}{pop_type} Mean/SEM RURA:" + str( mean_and_sem(sheets_rura[sheet][numpy.abs(sheets_rura[sheet])<0.5]*100)))
+
+        rura_exc = []
+        rura_inh = []
+        for sheet in sheets_rura:
+            if 'ex' in sheet.lower():
+                hc_exc += list(sheets_rura[sheet][numpy.abs(sheets_rura[sheet])<0.5]*100)
+            else:
+                hc_inh += list(sheets_rura[sheet][numpy.abs(sheets_rura[sheet])<0.5]*100)
+        print(f"Exc RURA: {mean_and_sem(rura_exc)}")
+        print(f"Inh RURA: {mean_and_sem(rura_inh)}")
+
+        return plots
+
+class MRfigRealAllLayers(Plotting):
+    required_parameters = ParameterSet({
+        'SimpleSheetName': str,  # the name of the sheet for which to plot
+        'ComplexSheetName': str,  # which neuron to show
+    })
+
+    def plot(self):
+        sheets = self.parametes.sheet_names
+        sheets_num = len(self.parameters.sheet_names)
+
+        self.fig = pylab.figure(facecolor='w', **self.fig_param)
+        gs = gridspec.GridSpec(1, 1)
+        gs.update(left=0.07, right=0.97, top=0.9, bottom=0.1)
+        gs = gs[0, 0]
+
+
+        # modulation ration only for excitatory neurons
+        # ModulationRatio(param_filter_query(data_store, sheet_name=exc_sheets, st_contrast=[high_contrast]), ParameterSet({})).analyse()
+        dsv_l4 = self.datastore.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.SimpleSheetName, analysis_algorithm='ModulationRatio', value_name='Modulation ratio(time)')
+        dsv_l23 = self.datastore.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.ComplexSheetName, analysis_algorithm='ModulationRatio', value_name='Modulation ratio(time)')
+
+
+        dsv = queries.param_filter_query(self.datastore, st_name='FullfieldDriftingSinusoidalGrating', st_orientation=0)
+        dsv_l4_v_F0 = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.SimpleSheetName, value_name='-(x+y)(F0_Vm,Mean(VM))')
+        dsv_l23_v_F0 = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.ComplexSheetName, value_name='-(x+y)(F0_Vm,Mean(VM))')
+        dsv_l4_v_F1 = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.SimpleSheetName, value_name='F1_Vm')
+        dsv_l23_v_F1 = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name=self.parameters.ComplexSheetName, value_name='F1_Vm')
+
+        dsv_l4_v_F0_inh = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name='V1_Inh_L4', value_name='-(x+y)(F0_Vm,Mean(VM))')
+        dsv_l23_v_F0_inh = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name='V1_Inh_L2/3', value_name='-(x+y)(F0_Vm,Mean(VM))')
+        dsv_l4_v_F1_inh = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name='V1_Inh_L4', value_name='F1_Vm')
+        dsv_l23_v_F1_inh = dsv.get_analysis_result(identifier='PerNeuronValue', sheet_name='V1_Inh_L2/3', value_name='F1_Vm')
+
+        assert len(dsv_l4) == 1,  str(len(dsv_l4))
+        assert len(dsv_l4_v_F0) == 1
+        assert len(dsv_l4_v_F1) == 1
+        if self.parameters.ComplexSheetName != 'None':
+            assert len(dsv_l23) == 1
+            assert len(dsv_l23_v_F0) == 1
+            assert len(dsv_l23_v_F1) == 1
+
+        l4_ids = dsv_l4_v_F0[0].ids
+        l4_ids_inh = dsv_l4_v_F0_inh[0].ids
+        if self.parameters.ComplexSheetName != 'None':
+            l23_ids = dsv_l23_v_F0[0].ids
+            l23_ids_inh = dsv_l23_v_F0_inh[0].ids
+
+        l4_exc_or = self.datastore.full_datastore.get_analysis_result(identifier='PerNeuronValue', value_name=['LGNAfferentOrientation', 'ORMapOrientation'], sheet_name='V1_Exc_L4')[0]
+        l4_ids = numpy.array(l4_ids)[numpy.nonzero(numpy.array([circular_dist(l4_exc_or.get_value_by_id(i), 0, numpy.pi) for i in l4_ids]) < 0.4)[0]]
+
+        l4_exc_or_inh = self.datastore.full_datastore.get_analysis_result(identifier='PerNeuronValue', value_name=['LGNAfferentOrientation', 'ORMapOrientation'], sheet_name='V1_Inh_L4')[0]
+        l4_ids_inh = numpy.array(l4_ids_inh)[numpy.nonzero(numpy.array([circular_dist(l4_exc_or_inh.get_value_by_id(i), 0, numpy.pi) for i in l4_ids_inh]) < 0.4)[0]]
+
+        if self.parameters.ComplexSheetName != 'None':
+            l23_exc_or = self.datastore.full_datastore.get_analysis_result(identifier='PerNeuronValue', value_name=['LGNAfferentOrientation', 'ORMapOrientation'], sheet_name='V1_Exc_L2/3')[0]
+            l23_ids = numpy.array(l23_ids)[numpy.nonzero(numpy.array([circular_dist(l23_exc_or.get_value_by_id(i), 0, numpy.pi) for i in l23_ids]) < 0.4)[0]]
+
+            l23_exc_or_inh = self.datastore.full_datastore.get_analysis_result(identifier='PerNeuronValue', value_name=['LGNAfferentOrientation', 'ORMapOrientation'], sheet_name='V1_Inh_L2/3')[0]
+            l23_ids_inh = numpy.array(l23_ids_inh)[numpy.nonzero(numpy.array([circular_dist(l23_exc_or_inh.get_value_by_id(i), 0, numpy.pi) for i in l23_ids_inh]) < 0.4)[0]]
+
+        l4_v_mr = numpy.array(dsv_l4_v_F1[0].get_value_by_id(l4_ids))/numpy.array(dsv_l4_v_F0[0].get_value_by_id(l4_ids))
+        l4_v_mr_inh = numpy.array(dsv_l4_v_F1_inh[0].get_value_by_id(l4_ids_inh))/numpy.array(dsv_l4_v_F0_inh[0].get_value_by_id(l4_ids_inh))
+        dsv_l4 = dsv_l4[0]
+        if self.parameters.ComplexSheetName != 'None':
+            l23_v_mr = numpy.array(dsv_l23_v_F1[0].get_value_by_id(l23_ids))/numpy.array(dsv_l23_v_F0[0].get_value_by_id(l23_ids))
+            l23_v_mr_inh = numpy.array(dsv_l23_v_F1_inh[0].get_value_by_id(l23_ids_inh))/numpy.array(dsv_l23_v_F0_inh[0].get_value_by_id(l23_ids_inh))
+            dsv_l23 = dsv_l23[0]
+
+        if self.parameters.ComplexSheetName != 'None':
+            dsv_simple = numpy.append(dsv_l4.values[dsv_l4.values < 1.0], dsv_l23.values[dsv_l23.values < 1.0])
+            dsv_complex = numpy.append(dsv_l4.values[dsv_l4.values > 1.0], dsv_l23.values[dsv_l23.values > 1.0])
+
+            simple_mr = numpy.append(numpy.array(dsv_l4.get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0], numpy.array(dsv_l23.get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) < 1.0])
+            complex_mr = numpy.append(numpy.array(dsv_l4.get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0], numpy.array(dsv_l23.get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) > 1.0])
+
+            simple_v_mr = numpy.append(l4_v_mr[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0], l23_v_mr[numpy.array(dsv_l23.get_value_by_id(l23_ids)) < 1.0])
+            complex_v_mr = numpy.append(l4_v_mr[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0], l23_v_mr[numpy.array(dsv_l23.get_value_by_id(l23_ids)) > 1.0])
+
+            dsv_simple_v_F0 = numpy.append(numpy.array(dsv_l4_v_F0[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0], numpy.array(dsv_l23_v_F0[0].get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) < 1.0])
+            dsv_complex_v_F0 = numpy.append(numpy.array(dsv_l4_v_F0[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0], numpy.array(dsv_l23_v_F0[0].get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) > 1.0])
+
+            dsv_simple_v_F1 = numpy.append(numpy.array(dsv_l4_v_F1[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0], numpy.array(dsv_l23_v_F1[0].get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) < 1.0])
+            dsv_complex_v_F1 = numpy.append(numpy.array(dsv_l4_v_F1[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0], numpy.array(dsv_l23_v_F1[0].get_value_by_id(l23_ids))[numpy.array(dsv_l23.get_value_by_id(l23_ids)) > 1.0])
+        else:
+            dsv_simple = dsv_l4.values[dsv_l4.values < 1.0]
+            dsv_complex = dsv_l4.values[dsv_l4.values > 1.0]
+
+            simple_mr = numpy.array(dsv_l4.get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0]
+            complex_mr = numpy.array(dsv_l4.get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0]
+            simple_v_mr = l4_v_mr[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0]
+            complex_v_mr = l4_v_mr[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0]
+
+            dsv_simple_v_F0 = numpy.array(dsv_l4_v_F0[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0]
+            dsv_complex_v_F0 = numpy.array(dsv_l4_v_F0[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0]
+
+            dsv_simple_v_F1 = numpy.array(dsv_l4_v_F1[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) < 1.0]
+            dsv_complex_v_F1 = numpy.array(dsv_l4_v_F1[0].get_value_by_id(l4_ids))[numpy.array(dsv_l4.get_value_by_id(l4_ids)) > 1.0]
+
+        gs = gridspec.GridSpecFromSubplotSpec(3, 7, subplot_spec=gs, wspace=0.3)
+        ax = pylab.subplot(gs[0, 0])
+        ax.hist(dsv_l4.values, bins=numpy.arange(0, 2.01, 0.2), color='gray', rwidth=0.8)
+        disable_top_right_axis(ax)
+        disable_left_axis(ax)
+        pylab.ylim(0, 540)
+        disable_xticks(ax)
+        remove_x_tick_labels()
+        remove_y_tick_labels()
+        pylab.ylabel('Layer 4', fontsize=19)
+        ax = pylab.subplot(gs[1, 0])
+        if self.parameters.ComplexSheetName != 'None':
+            ax.hist(dsv_l23.values, bins=numpy.arange(0, 2.01, 0.2), color='gray', rwidth=0.8)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            pylab.ylim(0, 540)
+            disable_xticks(ax)
+            remove_x_tick_labels()
+            remove_y_tick_labels()
+            pylab.ylabel('Layer 2/3', fontsize=19)
+
+            ax = pylab.subplot(gs[2, 0])
+            ax.hist([dsv_complex, dsv_simple], bins=numpy.arange(0, 2.01, 0.2), histtype='barstacked', color=['w', 'k'], rwidth=0.8, ec='black')
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            pylab.ylim(0, 540)
+            pylab.ylabel('Pooled', fontsize=19)
+            ax.set_xticks([0,1,2])
+            remove_y_tick_labels()
+            pylab.xlabel('F1/F0 spikes', fontsize=19)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(19)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+
+        ax = pylab.subplot(gs[0, 1])
+        ax.hist(l4_v_mr, bins=numpy.arange(
+            0, 5.01, 0.5), color='gray', rwidth=0.8)
+        disable_top_right_axis(ax)
+        disable_left_axis(ax)
+        disable_xticks(ax)
+        remove_x_tick_labels()
+        remove_y_tick_labels()
+        pylab.xlim(0, 5.0)
+
+        if self.parameters.ComplexSheetName != 'None':
+            ax = pylab.subplot(gs[1, 1])
+            ax.hist(l23_v_mr, bins=numpy.arange(0, 5.01, 0.5), color='gray', rwidth=0.8)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            disable_xticks(ax)
+            remove_x_tick_labels()
+            remove_y_tick_labels()
+            pylab.xlim(0, 5.0)
+            ax = pylab.subplot(gs[2, 1])
+            ax.hist([complex_v_mr, simple_v_mr], bins=numpy.arange(0, 5.01, 0.5), histtype='barstacked', color=['w', 'k'], rwidth=0.8, ec='black')
+            three_tick_axis(ax.xaxis)
+            remove_y_tick_labels()
+            pylab.xlabel('F1/F0 Vm', fontsize=19)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(19)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            pylab.xlim(0, 5.0)
+
+        ax = pylab.subplot(gs[0, 2])
+        ax.hist(numpy.abs(dsv_l4_v_F0[0].get_value_by_id(l4_ids)), bins=numpy.arange(0, 3.01, 0.3), color='gray', rwidth=0.8)
+        disable_top_right_axis(ax)
+        disable_left_axis(ax)
+        disable_left_axis(ax)
+        disable_xticks(ax)
+        remove_x_tick_labels()
+        remove_y_tick_labels()
+        pylab.xlim(0, 3.0)
+
+        if self.parameters.ComplexSheetName != 'None':
+            ax = pylab.subplot(gs[1, 2])
+            ax.hist(numpy.abs(dsv_l23_v_F0[0].get_value_by_id(l23_ids)), bins=numpy.arange(0, 3.01, 0.3), color='gray', rwidth=0.8)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            disable_xticks(ax)
+            remove_x_tick_labels()
+            remove_y_tick_labels()
+            pylab.xlim(0, 3.0)
+            ax = pylab.subplot(gs[2, 2])
+            ax.hist([numpy.abs(dsv_complex_v_F0), numpy.abs(dsv_simple_v_F0)], bins=numpy.arange(0, 3.01, 0.3), histtype='barstacked', color=['w', 'k'], rwidth=0.8, ec='black')
+            three_tick_axis(ax.xaxis)
+            remove_y_tick_labels()
+            pylab.xlabel('F0 Vm (mV)', fontsize=19)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(19)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            pylab.xlim(0, 3.0)
+
+        ax = pylab.subplot(gs[0, 3])
+        ax.hist(numpy.abs(dsv_l4_v_F1[0].get_value_by_id(l4_ids)), bins=numpy.arange(0, 10.01, 1), color='gray', rwidth=0.8)
+        disable_top_right_axis(ax)
+        disable_left_axis(ax)
+        disable_xticks(ax)
+        remove_x_tick_labels()
+        remove_y_tick_labels()
+        pylab.xlim(0, 10.0)
+
+        if self.parameters.ComplexSheetName != 'None':
+            ax = pylab.subplot(gs[1, 3])
+            ax.hist(numpy.abs(dsv_l23_v_F1[0].get_value_by_id(l23_ids)), bins=numpy.arange(0, 10.01, 1), color='gray', rwidth=0.8)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            disable_xticks(ax)
+            remove_x_tick_labels()
+            remove_y_tick_labels()
+            pylab.xlim(0, 10.0)
+            ax = pylab.subplot(gs[2, 3])
+            ax.hist([numpy.abs(dsv_complex_v_F1), numpy.abs(dsv_simple_v_F1)], bins=numpy.arange(0, 10.01, 1), histtype='barstacked', color=['w', 'k'], rwidth=0.8, ec='black')
+            three_tick_axis(ax.xaxis)
+            remove_y_tick_labels()
+            pylab.xlabel('F1 Vm (mV)', fontsize=19)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(19)
+            disable_top_right_axis(ax)
+            disable_left_axis(ax)
+            pylab.xlim(0, 10.0)
+
+        logger.info(len(simple_v_mr))
+        logger.info(len(dsv_simple))
+        if self.parameters.ComplexSheetName != 'None':
+            ggs = gridspec.GridSpecFromSubplotSpec(20, 20, gs[:, 4:7])
+            ax = pylab.subplot(ggs[3:18, 3:18])
+            ax.plot(complex_v_mr, complex_mr, 'ok', label='layer 2/3')
+            ax.plot(simple_v_mr, simple_mr, 'ok', label='layer 4')
+            pylab.xlabel('F1/F0 Vm', fontsize=19)
+            pylab.ylabel('F1/F0 Spikes', fontsize=19)
+            pylab.xlim(0, 5.0)
+            pylab.ylim(0, 2.0)
+            for label in ax.get_xticklabels() + ax.get_yticklabels():
+                label.set_fontsize(19)
+
+        if self.plot_file_name:
+            pylab.savefig(Global.root_directory+self.plot_file_name)
+
+class LSV1MReponseOverviewAllLayers(Plotting):
+    required_parameters = ParameterSet({
+        'or_many_analog' : dict,
+        'exc_sheet_names' : list, # which keys in or_many_analog will be plotted on the left
+    })
+
+    def subplot(self, subplotspec):
+        plots = {}
+
+        sheets = list(self.parameters.or_many_analog)
+        exc_sheets = self.parameters.exc_sheet_names
+        inh_sheets = sorted(set(sheets) - set(exc_sheets), key=lambda x: sheets.index(x))
+
+        layers_pops = dict()
+        for sheet in sheets:
+            pop_type = sheet.split('_')[1][0].lower()
+            layer = sheet.split('_')[2].replace("/","")
+            if layer not in layers_pops:
+                layers_pops[layer] = {'exc':[], 'inh':[]}
+            if pop_type == 'e':
+                layers_pops[layer]['exc'].append(sheet)
+            else:
+                layers_pops[layer]['inh'].append(sheet)
+        exc_rows = []
+        inh_rows = []
+        for layer in layers_pops:
+            exc_rows.extend(layers_pops[layer]['exc'])
+            inh_rows.extend(layers_pops[layer]['inh'])
+            diff = len(exc_rows) - len(inh_rows) 
+            exc_rows.extend(['']*-diff)
+            inh_rows.extend(['']*diff)            
+
+
+        rows_num = len(exc_sheets)
+
+        gs = gridspec.GridSpecFromSubplotSpec(10*rows_num-1, 68, subplot_spec=subplotspec,hspace=1.0, wspace=100.0)
+
+        for i, rows in enumerate((exc_rows, inh_rows)):
+            for j, sheet in enumerate(rows):
+                if sheet == '':
+                    continue
+                pop_type = sheet.split('_')[1]
+                layer = sheet.split('_')[2].replace("/","")
+                if i == 0:  # set up y axis
+                    y_labels = {}
+                else:
+                    y_labels = {'y_label': None,'y_axis' : False, 'y_ticks' : False}
+
+                if j == 0:
+                    title = {}
+                else:
+                    title = {'title' : None}
+                if j == rows_num-1:  # set up x axis
+                    x_labels = {}
+                else:
+                    x_labels = {'x_label': None,'x_axis' : False, 'x_ticks' : False}
+                dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+                plots[f'{pop_type}Or0{layer}'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : self.parameters.or_many_analog[sheet], 'sheet_activity' : {}, 'spontaneous' : False})),gs[j*10:j*10+9,35*i:35*i+16], {**x_labels, **y_labels, **title})
+                dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+                plots[f'{pop_type}OrPiH{layer}'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : sheet, 'neuron' : self.parameters.or_many_analog[sheet], 'sheet_activity' : {}, 'spontaneous' : False})),gs[j*10:j*10+9,35*i+17:35*i+33], {'y_label': None,'y_axis' : False, 'y_ticks' : False, **x_labels, **title})
+
+        def stim_plot(phase):
+            x = numpy.arange(0,2,0.01)
+            pylab.plot(x,numpy.sin(x*numpy.pi*4+phase),'g',linewidth=3)
+            phf.disable_top_right_axis(self.axis)
+            phf.disable_xticks(self.axis)
+            phf.disable_yticks(self.axis)
+            phf.remove_x_tick_labels()
+            phf.remove_y_tick_labels()
+            self.axis.set_ylim(-1.3,1.3)
+            self.axis.set_xlim(0,2)
+
+        self.axis = pylab.subplot(gs[9:10,0:16])
+        stim_plot(8*numpy.pi/16)
+        self.axis = pylab.subplot(gs[9:10,35:51])
+        stim_plot(7*numpy.pi/16)
+
+        return plots
+
+
+### Follows old code ###
+
+
 class MRfigReal(Plotting):
     required_parameters = ParameterSet({
         'SimpleSheetName': str,  # the name of the sheet for which to plot
@@ -301,6 +1240,68 @@ class MRfigReal(Plotting):
         if self.plot_file_name:
             pylab.savefig(Global.root_directory+self.plot_file_name)
 
+class LSV1MReponseOverview(Plotting):
+    required_parameters = ParameterSet({
+        'l4_exc_neuron' : int,
+        'l4_inh_neuron' : int,
+        'l23_exc_neuron' : int,
+        'l23_inh_neuron' : int,
+    })
+
+    def subplot(self, subplotspec):
+        plots = {}
+        gs = gridspec.GridSpecFromSubplotSpec(19, 68, subplot_spec=subplotspec,hspace=1.0, wspace=100.0)
+
+
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+        plots['ExcOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,0:16],{'x_label': None,'x_axis' : False, 'x_ticks' : False })
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+        plots['ExcOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,17:33],{'x_label': None,'y_label': None,'x_axis' : False, 'x_ticks' : False,'y_axis' : False, 'y_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+        plots['InhOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,35:51],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+        plots['ExcOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,17:33],{'x_label': None,'y_label': None,'x_axis' : False, 'x_ticks' : False,'y_axis' : False, 'y_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+        plots['InhOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,35:51],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+        plots['InhOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,52:68],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
+
+
+        def stim_plot(phase):
+            x = numpy.arange(0,2,0.01)
+            pylab.plot(x,numpy.sin(x*numpy.pi*4+phase),'g',linewidth=3)
+            phf.disable_top_right_axis(self.axis)
+            phf.disable_xticks(self.axis)
+            phf.disable_yticks(self.axis)
+            phf.remove_x_tick_labels()
+            phf.remove_y_tick_labels()
+            self.axis.set_ylim(-1.3,1.3)
+            self.axis.set_xlim(0,2)
+
+        self.axis = pylab.subplot(gs[9:10,0:16])
+        stim_plot(8*numpy.pi/16)
+        self.axis = pylab.subplot(gs[9:10,35:51])
+        stim_plot(7*numpy.pi/16)
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+        plots['ExcOr0L23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neuron' : self.parameters.l23_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,0:16],{'title' : None})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+        plots['ExcOrPiHL23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neuron' : self.parameters.l23_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,17:33],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
+        plots['InhOr0L23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neuron' : self.parameters.l23_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,35:51],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
+
+        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
+        plots['InhOrPiHL23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neuron' : self.parameters.l23_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,52:68],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
+
+        return plots
 
 class SpontActOverview(Plotting):
 
@@ -334,7 +1335,7 @@ class SpontActOverview(Plotting):
     def subplot(self, subplotspec):
         plots = {}
         gs = gridspec.GridSpecFromSubplotSpec(12,3, subplot_spec=subplotspec,hspace=0.3, wspace=0.45)
-        dsv = param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name=['InternalStimulus'])    
+        dsv = param_filter_query(self.datastore,st_direct_stimulation_name=None,st_name=['InternalStimulus'])
 
         fontsize=14
         
@@ -438,10 +1439,10 @@ class SpontStatisticsOverview(Plotting):
             
 
 
-        logger.info('mean_firing_rate_L4E :' + str(mean_firing_rate_L4E))        
-        logger.info('mean_firing_rate_L4I :' + str(mean_firing_rate_L4I))        
+        logger.info('mean_firing_rate_L4E :' + str(mean_firing_rate_L4E))
+        logger.info('mean_firing_rate_L4I :' + str(mean_firing_rate_L4I))
         logger.info('mean_firing_rate_L23E :' + str(mean_firing_rate_L23E))
-        logger.info('mean_firing_rate_L23I :' + str(mean_firing_rate_L23I))        
+        logger.info('mean_firing_rate_L23I :' + str(mean_firing_rate_L23I))
                 
         mean_and_std = lambda x : (numpy.mean(x),numpy.std(x))
         s = queries.param_filter_query(
@@ -2122,69 +3123,6 @@ class StimulusResponseComparison(Plotting):
         #plots['GratingsWithEM'] = (OverviewPlot(dsv, ParameterSet({'sheet_name': self.parameters.sheet_name,'neuron': self.parameters.neuron, 'spontaneous' : True,'sheet_activity' : {}})),gs[2:4,:],{'x_label': None})
         dsv = queries.param_filter_query(self.datastore,st_name='NaturalImageWithEyeMovement')
         plots['NIwEM'] = (OverviewPlot(dsv, ParameterSet({'sheet_name': self.parameters.sheet_name,'neuron': self.parameters.neuron,'spontaneous' : True, 'sheet_activity' : {}})),gs[:,:10],{})
-
-        return plots
-
-class LSV1MReponseOverview(Plotting):
-    required_parameters = ParameterSet({
-        'l4_exc_neuron' : int,
-        'l4_inh_neuron' : int,
-        'l23_exc_neuron' : int,
-        'l23_inh_neuron' : int,
-    })
-
-    def subplot(self, subplotspec):
-        plots = {}
-        gs = gridspec.GridSpecFromSubplotSpec(19, 68, subplot_spec=subplotspec,hspace=1.0, wspace=100.0)
-
-
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
-        plots['ExcOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,0:16],{'x_label': None,'x_axis' : False, 'x_ticks' : False })
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
-        plots['ExcOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,17:33],{'x_label': None,'y_label': None,'x_axis' : False, 'x_ticks' : False,'y_axis' : False, 'y_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
-        plots['InhOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,35:51],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
-        plots['ExcOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L4', 'neuron' : self.parameters.l4_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,17:33],{'x_label': None,'y_label': None,'x_axis' : False, 'x_ticks' : False,'y_axis' : False, 'y_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
-        plots['InhOr0L4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,35:51],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
-        plots['InhOrPiHL4'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L4', 'neuron' : self.parameters.l4_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[0:9,52:68],{'x_label': None,'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False,'x_axis' : False, 'x_ticks' : False})
-
-
-        def stim_plot(phase):
-            x = numpy.arange(0,2,0.01)
-            pylab.plot(x,numpy.sin(x*numpy.pi*4+phase),'g',linewidth=3)
-            phf.disable_top_right_axis(self.axis)
-            phf.disable_xticks(self.axis)
-            phf.disable_yticks(self.axis)
-            phf.remove_x_tick_labels()
-            phf.remove_y_tick_labels()
-            self.axis.set_ylim(-1.3,1.3)
-            self.axis.set_xlim(0,2)
-
-        self.axis = pylab.subplot(gs[9:10,0:16])
-        stim_plot(8*numpy.pi/16)
-        self.axis = pylab.subplot(gs[9:10,35:51])
-        stim_plot(7*numpy.pi/16)
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
-        plots['ExcOr0L23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neuron' : self.parameters.l23_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,0:16],{'title' : None})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
-        plots['ExcOrPiHL23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Exc_L2/3', 'neuron' : self.parameters.l23_exc_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,17:33],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[0],st_contrast=[100])
-        plots['InhOr0L23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neuron' : self.parameters.l23_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,35:51],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
-
-        dsv = param_filter_query(self.datastore,st_name='FullfieldDriftingSinusoidalGrating',st_orientation=[numpy.pi/2],st_contrast=[100])
-        plots['InhOrPiHL23'] = (OverviewPlot(dsv, ParameterSet({'sheet_name' : 'V1_Inh_L2/3', 'neuron' : self.parameters.l23_inh_neuron, 'sheet_activity' : {}, 'spontaneous' : False})),gs[10:,52:68],{'y_label': None, 'title' : None,'y_axis' : False, 'y_ticks' : False})
 
         return plots
 

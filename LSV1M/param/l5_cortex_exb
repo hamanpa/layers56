@@ -2,51 +2,48 @@
     #CorticalUniformSheet parameters
     'component': 'mozaik.sheets.vision.VisualCorticalUniformSheet',
     'params':{
-                'name':'V1_Exc_L5CE',
-                'sx':ref('sheets.l4_cortex_exc.params.sx'),
-                'sy':ref('sheets.l4_cortex_exc.params.sy'),
-                'density': ref('sheets.l5_cortex_exa.params.density') * 4.0, 
-                'mpi_safe' : False,    
-                'magnification_factor': ref('sheets.l4_cortex_exc.params.magnification_factor'),
-              
-                 'cell': {
-                        'native_nest': False,
-                        'model': 'EIF_cond_exp_isfa_ista',
-                        'params': {
-                            'v_rest': -80,
-                            'v_reset': -60.0,
-                            'tau_refrac': 2.0,
-                            'tau_m': ref('sheets.l4_cortex_exc.params.cell.params.tau_m'),
-                            'cm': ref('sheets.l4_cortex_exc.params.cell.params.cm'),
-                            'e_rev_E': 0.0,
-                            'e_rev_I': -80.0,
-                            'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
-                            'tau_syn_I': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_I'),
-                            'a' : -0.8,
-                            'b' : 0.08,
-                            'delta_T' : 0.8,
-                            'tau_w' : 1.0,
-                            'v_thresh' : ref('sheets.l4_cortex_exc.params.cell.params.v_thresh'), 
-                        },
-
-                       'initial_values': {
-                                    'v': PyNNDistribution(name='uniform',low=-70,high=-51),
-                                },
-
-                    },
-                'artificial_stimulators' : {},
-                'recording_interval'  :  1.0,                                                            
-                'recorders' : url("param/l5_exb_rec"),
+        'name':'V1_Exb_L5',
+        'sx':ref('sheets.l4_cortex_exc.params.sx'),
+        'sy':ref('sheets.l4_cortex_exc.params.sy'),
+        'density': ref('sheets.l5_cortex_exa.params.density') * ref('l5_density_ratio'), 
+        'mpi_safe' : False,    
+        'magnification_factor': ref('sheets.l4_cortex_exc.params.magnification_factor'),
+        'cell': {
+            'native_nest': False,
+            'model': 'EIF_cond_exp_isfa_ista',
+            'params': {
+                'v_rest': -80,
+                'v_reset': -60.0,
+                'tau_refrac': 2.0,
+                'tau_m': ref('sheets.l4_cortex_exc.params.cell.params.tau_m'),
+                'cm': ref('sheets.l4_cortex_exc.params.cell.params.cm'),
+                'e_rev_E': 0.0,
+                'e_rev_I': -80.0,
+                'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
+                'tau_syn_I': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_I'),
+                'a' : ref('sheets.l4_cortex_exc.params.cell.params.a'),
+                'b' : ref('sheets.l4_cortex_exc.params.cell.params.b'),
+                'delta_T' : 0.8,
+                'tau_w' : ref('sheets.l4_cortex_exc.params.cell.params.tau_w'),
+                'v_thresh' : ref('sheets.l4_cortex_exc.params.cell.params.v_thresh'), 
+            },
+            'initial_values': {
+                'v': PyNNDistribution(name='uniform',low=-70,high=-51),
+            },
+        },
+        'artificial_stimulators' : {},
+        'recording_interval'  :  1.0,                                                            
+        'recorders' : url("param/l5_exb_rec"),
     },
 
 
     'K' : 1000, # Number of incoming synapses to neuron
-    'l23_aff_ratio' : 0.2, # Fraction of incoming connections from L2/3
-    'l5b_aff_ratio' : 0.2, # Fraction of incoming connections from L5B
+    'l23_aff_ratio' : 0.3, # Fraction of incoming connections from L2/3
+    'l5a_aff_ratio' : 0.0, # Fraction of incoming connections from L5B
     'l6a_aff_ratio' : 0.0, # Fraction of incoming connections from L6A
-    'l6b_aff_ratio' : 0.1, # Fraction of incoming connections from L6B
+    'l6b_aff_ratio' : 0.0, # Fraction of incoming connections from L6B
 
-    'self_connections' : 1.0 - ref('sheets.l5_cortex_exb.l23_aff_ratio') - ref('sheets.l5_cortex_exb.l5b_aff_ratio') - ref('sheets.l5_cortex_exb.l6a_aff_ratio') - ref('sheets.l5_cortex_exb.l6b_aff_ratio'),
+    'self_conns' : 1.0 - ref('sheets.l5_cortex_exb.l23_aff_ratio') - ref('sheets.l5_cortex_exb.l5a_aff_ratio') - ref('sheets.l5_cortex_exb.l6a_aff_ratio') - ref('sheets.l5_cortex_exb.l6b_aff_ratio'),
 
 
     # Connections
@@ -71,14 +68,14 @@
             'f2' : {
                 'component' : 'mozaik.connectors.modular_connector_functions.GaussianDecayModularConnectorFunction',
                 'params' : {
-                    'arborization_constant' : 270,
+                    'arborization_constant' : 250,
                     'arborization_scaler' : 1.0,
                 }
             },
             'f3' : {
                 'component' : 'mozaik.connectors.modular_connector_functions.GaussianDecayModularConnectorFunction',
                 'params' : {
-                    'arborization_constant' : 2000,
+                    'arborization_constant' : 1500,
                     'arborization_scaler' : 4.0,
                 }
             }
@@ -109,7 +106,7 @@
         
         'num_samples_functions' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_expression'),
-        'num_samples' : ref('sheets.l5_cortex_exb.K') * 4/5 * ref('sheets.l5_cortex_exb.self_connections'),
+        'num_samples' : ref('sheets.l5_cortex_exb.K') * 4/5 * ref('sheets.l5_cortex_exb.self_conns'),
 
         'local_module': None,
     },
@@ -122,15 +119,14 @@
         'weight_functions' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.weight_functions'),
         'weight_expression' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.weight_expression'),
 
-        # TODO: change appropriately
-        'base_weight': ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.base_weight'),
+        'base_weight': ref('sheets.l23_cortex_exc.L23ExcL23InhConnection.base_weight'),
 
-        'delay_functions' : ref('sheets.l4_cortex_exc.L4ExcL4Inh.delay_functions'),
-        'delay_expression' : ref('sheets.l4_cortex_exc.L4ExcL4Inh.delay_expression'),
+        'delay_functions' : ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.delay_expression'),
         
         'num_samples_functions' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_expression'),
-        'num_samples' : (ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples') * 0.2 +  ref('sheets.l5_cortex_exb.L5ExbL5ExbConnection.num_samples') * 0.8) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
+        'num_samples' : (ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples') * ref('l5_conn_ratio') +  ref('sheets.l5_cortex_exb.L5ExbL5ExbConnection.num_samples') * (1 - ref('l5_conn_ratio'))) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
 
         'local_module': None,
     },
@@ -179,10 +175,10 @@
 
         'weight_functions' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.weight_functions'),
         'weight_expression' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.weight_expression'),
-        'base_weight': ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.base_weight'),
+        'base_weight': ref('sheets.l5_cortex_exb.L5ExbL5InhConnection.base_weight'),
 
-        'delay_functions' : ref('sheets.l5_cortex_exa.L5ExbL5InhConnection.delay_functions'),
-        'delay_expression' : ref('sheets.l5_cortex_exa.L5ExbL5InhConnection.delay_expression'),
+        'delay_functions' : ref('sheets.l5_cortex_exb.L5ExbL5InhConnection.delay_functions'),
+        'delay_expression' : ref('sheets.l5_cortex_exb.L5ExbL5InhConnection.delay_expression'),
         
         'num_samples_functions' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l5_cortex_exb.L5ExbL5ExaConnection.num_samples_expression'),

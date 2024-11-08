@@ -12,15 +12,22 @@ def create_experiments(model):
 
         # Spontaneous Activity
         NoStimulation(model, ParameterSet(
-            {'duration': 3*8*2*5*3*8*7})),
+            {'duration': 3*8*2*5*3*8*7})),  # 3*8*2*5*3*8*7 == 40320
 
         # Measure orientation tuning with full-filed sinusoidal gratins
         MeasureOrientationTuningFullfield(model, ParameterSet(
-            {'num_orientations': 10, 'spatial_frequency': 0.8, 'temporal_frequency': 2, 'grating_duration': 2*143*7, 'contrasts': [10,30,100], 'num_trials':10, 'shuffle_stimuli': True})),
+            {'num_orientations': 10,
+             'spatial_frequency': 0.8, 
+             'temporal_frequency': 2, 
+             'grating_duration': 2*143*7, 
+             'contrasts': [10,30,100],
+             'num_trials':10, 
+             'shuffle_stimuli': True
+            })),
 
         # Measure response to natural image with simulated eye movement
-        MeasureNaturalImagesWithEyeMovement(model, ParameterSet(
-            {'stimulus_duration': 2*143*7, 'num_trials': 10, 'size':30, 'shuffle_stimuli': False})),
+        # MeasureNaturalImagesWithEyeMovement(model, ParameterSet(
+        #     {'stimulus_duration': 2*143*7, 'num_trials': 10, 'size':30, 'shuffle_stimuli': False})),
     ]
 
 
@@ -41,6 +48,7 @@ def create_experiments_spont(model):
     return [
         # Spontaneous Activity
         NoStimulation(model, ParameterSet(
-            {'duration': 3*8*2*5*3*8*7})),
+            # {'duration': 3*8*3*8*7})),  # shorter
+            {'duration': 3*8*2*5*3*8*7})),  # full time
     ]
 

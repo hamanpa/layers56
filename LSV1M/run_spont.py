@@ -30,11 +30,45 @@ nest.Install("stepcurrentmodule")
 if True:
     data_store, model = run_workflow(
         'SelfSustainedPushPull', SelfSustainedPushPull, create_experiments_spont)
+
+    # model.connectors['V1L23ExcL23ExcConnection'].store_connections(data_store)
+    # model.connectors['V1L23ExcL23InhConnection'].store_connections(data_store)
+    # model.connectors['V1L23InhL23ExcConnection'].store_connections(data_store)
+    # model.connectors['V1L23InhL23InhConnection'].store_connections(data_store)
+
+    # model.connectors['V1L23ExcL5InhConnection'].store_connections(data_store)
+
+    # # L5a
+    # model.connectors['V1L23ExcL5ExaConnection'].store_connections(data_store)
+    # model.connectors['V1L5ExaL5ExaConnection'].store_connections(data_store)
+    # model.connectors['V1L5ExaL5InhConnection'].store_connections(data_store)
+    # model.connectors['V1L5InhL5ExaConnection'].store_connections(data_store)
+
+    # L5b
+    # model.connectors['V1L23ExcL5ExbConnection'].store_connections(data_store)
+    # model.connectors['V1L5ExbL5ExbConnection'].store_connections(data_store)
+    # model.connectors['V1L5ExbL5InhConnection'].store_connections(data_store)
+    # model.connectors['V1L5InhL5ExbConnection'].store_connections(data_store)
+
+
+
+    # model.connectors['V1L5InhL5InhConnection'].store_connections(data_store)
+
+    # model.connectors['V1L4ExcL4ExcConnection'].store_connections(data_store)
+    # # model.connectors['V1L23ExcL5ExbConnection'].store_connections(data_store)
+
+ 
     if False:
-        model.connectors['V1AffConnectionOn'].store_connections(data_store)
-        model.connectors['V1AffConnectionOff'].store_connections(data_store)
-        model.connectors['V1AffInhConnectionOn'].store_connections(data_store)
-        model.connectors['V1AffInhConnectionOff'].store_connections(data_store)
+        # These Aff Conns should be changed 
+        # V1AffL4ExcConnection, V1AffL4InhConnection, V1AffL6ExaConnection,V1AffL6InhConnection
+        # not sure how the On, Off is added...
+
+        # model.connectors['V1AffConnectionOn'].store_connections(data_store)
+        # model.connectors['V1AffConnectionOff'].store_connections(data_store)
+        # model.connectors['V1AffInhConnectionOn'].store_connections(data_store)
+        # model.connectors['V1AffInhConnectionOff'].store_connections(data_store)
+
+
         model.connectors['V1L4ExcL4ExcConnection'].store_connections(
             data_store)
         model.connectors['V1L4ExcL4InhConnection'].store_connections(
@@ -53,6 +87,16 @@ if True:
             data_store)
         model.connectors['V1L4ExcL23ExcConnection'].store_connections(data_store)
         model.connectors['V1L4ExcL23InhConnection'].store_connections(data_store)
+
+        model.connectors['V1L23ExcL5ExaConnection'].store_connections(data_store)
+        # model.connectors['V1L23ExcL5ExbConnection'].store_connections(data_store)
+        model.connectors['V1L23ExcL5InhConnection'].store_connections(data_store)
+
+        model.connectors['V1L5ExaL5ExaConnection'].store_connections(data_store)
+        model.connectors['V1L5ExaL5InhConnection'].store_connections(data_store)
+        model.connectors['V1L5InhL5ExaConnection'].store_connections(data_store)
+
+
     data_store.save()
 else:
     setup_logging()

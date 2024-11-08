@@ -24,10 +24,10 @@
                 'e_rev_I': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_I'),
                 'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
                 'tau_syn_I': ref('sheets.l23_cortex_exc.params.cell.params.tau_syn_I'),
-                'a' : 0,
-                'b' : 0,
+                'a' : ref('sheets.l4_cortex_inh.params.cell.params.a'),
+                'b' : ref('sheets.l4_cortex_inh.params.cell.params.b'),
                 'delta_T' : ref('sheets.l4_cortex_exc.params.cell.params.delta_T'),
-                'tau_w' : ref('sheets.l4_cortex_exc.params.cell.params.tau_w'),
+                'tau_w' : ref('sheets.l4_cortex_inh.params.cell.params.tau_w'),
             },
             'initial_values': {
                 'v': PyNNDistribution(name='uniform',low=-70,high=-51),
@@ -38,7 +38,7 @@
         'recorders' : url("param/l23_inh_rec"),    
     },
 
-    'inhibitory_connection_afferent_ratio' :  ref('sheets.l4_cortex_inh.inhibitory_connection_ratio'), # The fraction of connections that are onto inhibitory neurons compared to excitatory
+    'inhibitory_connection_ratio' :  ref('sheets.l4_cortex_inh.inhibitory_connection_ratio'), # The fraction of connections that are onto inhibitory neurons compared to excitatory
 
     'L23InhL23ExcConnection': {
         'target_synapses' : 'inhibitory',             

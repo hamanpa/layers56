@@ -2,45 +2,41 @@
     #CorticalUniformSheet parameters
     'component': 'mozaik.sheets.vision.VisualCorticalUniformSheet',
     'params':{
-                'name':'V1_Inh_L5',
-                'sx':ref('sheets.l4_cortex_exc.params.sx'),
-                'sy':ref('sheets.l4_cortex_exc.params.sy'),
-                'density': (ref('sheets.l5_cortex_exa.params.density') + ref('sheets.l5_cortex_exb.params.density')) / 4.0,
-                'mpi_safe' : False,    
-                'magnification_factor': ref('sheets.l4_cortex_exc.params.magnification_factor'),
-              
-                    
-                'cell': {
-                        'model': 'EIF_cond_exp_isfa_ista',
-                        'native_nest': False,
-                        'params': {
-                            'v_thresh': ref('sheets.l4_cortex_inh.params.cell.params.v_thresh'),
-                            'v_rest': ref('sheets.l4_cortex_inh.params.cell.params.v_rest'),
-                            'v_reset': -60.0,
-                            'tau_refrac': 0.5,
-                            'tau_m': ref('sheets.l4_cortex_inh.params.cell.params.tau_m'),
-                            'cm': 0.03,
-                            'e_rev_E': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_E'),
-                            'e_rev_I': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_I'),
-                            'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
-                            'tau_syn_I': ref('sheets.l23_cortex_exc.params.cell.params.tau_syn_I'),
-                            'a' : 0,
-                            'b' : 0,
-                            'delta_T' : ref('sheets.l4_cortex_exc.params.cell.params.delta_T'),
-                            'tau_w' : ref('sheets.l4_cortex_exc.params.cell.params.tau_w'),
-                        },
-
-                       'initial_values': {
-                                    'v': PyNNDistribution(name='uniform',low=-70,high=-51),
-                                },
-
-                    },
-                'artificial_stimulators' : {},
-                'recording_interval'  :  1.0,                                                            
-                'recorders' : url("param/l5_inh_rec"),
+        'name':'V1_Inh_L5',
+        'sx':ref('sheets.l4_cortex_exc.params.sx'),
+        'sy':ref('sheets.l4_cortex_exc.params.sy'),
+        'density': (ref('sheets.l5_cortex_exa.params.density') + ref('sheets.l5_cortex_exb.params.density')) / 4.0,
+        'mpi_safe' : False,    
+        'magnification_factor': ref('sheets.l4_cortex_exc.params.magnification_factor'),
+        'cell': {
+            'model': 'EIF_cond_exp_isfa_ista',
+            'native_nest': False,
+            'params': {
+                'v_thresh': ref('sheets.l4_cortex_inh.params.cell.params.v_thresh'),
+                'v_rest': ref('sheets.l4_cortex_inh.params.cell.params.v_rest'),
+                'v_reset': -60.0,
+                'tau_refrac': 0.5,
+                'tau_m': ref('sheets.l4_cortex_inh.params.cell.params.tau_m'),
+                'cm': 0.03,
+                'e_rev_E': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_E'),
+                'e_rev_I': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_I'),
+                'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
+                'tau_syn_I': ref('sheets.l23_cortex_exc.params.cell.params.tau_syn_I'),
+                'a' : ref('sheets.l4_cortex_inh.params.cell.params.a'),
+                'b' : ref('sheets.l4_cortex_inh.params.cell.params.b'),
+                'delta_T' : ref('sheets.l4_cortex_exc.params.cell.params.delta_T'),
+                'tau_w' : ref('sheets.l4_cortex_inh.params.cell.params.tau_w'),
+            },
+            'initial_values': {
+                'v': PyNNDistribution(name='uniform',low=-70,high=-51),
+            },
+        },
+        'artificial_stimulators' : {},
+        'recording_interval'  :  1.0,                                                            
+        'recorders' : url("param/l5_inh_rec"),
     },
 
-    'inhibitory_connection_afferent_ratio' :  ref('sheets.l4_cortex_inh.inhibitory_connection_ratio'), # The fraction of connections that are onto inhibitory neurons compared to excitatory
+    'inhibitory_connection_ratio' :  ref('sheets.l4_cortex_inh.inhibitory_connection_ratio'), # The fraction of connections that are onto inhibitory neurons compared to excitatory
 
 
     # Connections are local, parameters are taken from the L4 cortex 
@@ -92,7 +88,7 @@
 
     'L5InhL5InhConnection' : {
         'target_synapses' : 'inhibitory',             
-        'short_term_plasticity': ref('sheets.l23_cortex_inh.L23InhL23ExcConnection.short_term_plasticity'),
+        'short_term_plasticity': ref('sheets.l4_cortex_inh.L4InhL4InhConnection.short_term_plasticity'),
         
         'weight_functions' : {
             'f1' : {
@@ -111,7 +107,7 @@
         
         'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
-    	'num_samples' : (ref(sheets.l5_cortex_inh.L5InhL5ExaConnection.num_samples) * 0.2 + ref(sheets.l5_cortex_inh.L5InhL5ExbConnection.num_samples) * 0.8) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
+    	'num_samples' : (ref('sheets.l5_cortex_inh.L5InhL5ExaConnection.num_samples') * ref('l5_conn_ratio') + ref('sheets.l5_cortex_inh.L5InhL5ExbConnection.num_samples') * (1 - ref('l5_conn_ratio'))) * ref('sheets.l5_cortex_inh.inhibitory_connection_ratio'),
         
         'local_module': None,
     },

@@ -2,10 +2,10 @@
     #CorticalUniformSheet parameters
     'component': 'mozaik.sheets.vision.VisualCorticalUniformSheet',
     'params':{
-        'name':'V1_Exc_L4',
-        'sx':5000.0,
-        'sy':ref('sheets.l4_cortex_exc.params.sx'),
-        'density': 20000.0 * ref('density_frac'),
+        'name' : 'V1_Exc_L4',
+        'sx' : 5000.0,
+        'sy' : ref('sheets.l4_cortex_exc.params.sx'),
+        'density' : 20000.0 * ref('density_frac'),
         'mpi_safe' : False,    
         'magnification_factor': 1000.0,
         'cell': {
@@ -22,9 +22,9 @@
                 'tau_syn_E': 1.5,
                 'tau_syn_I': 4.2,
                 'a' : -0.8,
-                'b' : 0.08,
+                'b' : 0.08, # 80.0,
                 'delta_T' : 0.8,
-                'tau_w' : 1.0,
+                'tau_w' : 1.0,  # 144.0,
                 'v_thresh' : -57.0                            
             },
             'initial_values': {
@@ -190,7 +190,7 @@
 
    'L4ExcL23InhConnection': {
         'target_synapses' : 'excitatory',             
-        'short_term_plasticity':  ref('sheets.l23_cortex_exc.L4ExcL23ExcConnection.short_term_plasticity'),
+        'short_term_plasticity':  ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.short_term_plasticity'),
 
         'weight_functions' : {
             'f1' : {
@@ -211,7 +211,7 @@
             }, 
         },
         'weight_expression' : 'f1*f2',
-        'base_weight': ref('sheets.l23_cortex_exc.L4ExcL23ExcConnection.base_weight'),
+        'base_weight': ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.base_weight'),
 
         'delay_functions' : {
             'd1' : {
@@ -226,7 +226,7 @@
 
         'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
-        'num_samples' : ref('sheets.l23_cortex_exc.L4ExcL23ExcConnection.num_samples')* ref('sheets.l4_cortex_exc.inhibitory_connection_ratio'),
+        'num_samples' : ref('sheets.l4_cortex_exc.L4ExcL23ExcConnection.num_samples')* ref('sheets.l4_cortex_inh.inhibitory_connection_ratio'),
 
         'local_module': None,
     },
@@ -237,6 +237,7 @@
     'AfferentConnection': {
         'aspect_ratio':            0.4,
         'size':                    0.17,
+        # 'size':                    PyNNDistribution(name='uniform', mu=0.17,sigma=0.01),
         'orientation_preference':  PyNNDistribution(name='uniform',low=0,high=3.141592653589793),
         'phase':                   PyNNDistribution(name='uniform',low=0,high=6.283185307179586),
         'frequency':               0.8,
