@@ -1,0 +1,70 @@
+{
+    'input_space_type' : 'mozaik.space.VisualSpace',
+    'input_space': {
+        'update_interval': 7.0, # ms
+        'background_luminance': 50.0, # cd/m²
+    },
+    'visual_field': {
+        'centre': (0.0, 0.0), # degrees (x,y)
+        'size': (11.0, 11.0), # degrees (width, height)
+    },
+    'sheets' : {
+        'l4_cortex_exc': url("param/l4_cortex_exc"),
+        'l4_cortex_inh': url("param/l4_cortex_inh"),
+        'l23_cortex_exc': url("param/l23_cortex_exc"),
+        'l23_cortex_inh': url("param/l23_cortex_inh"),
+        'l5_cortex_exa': url("param/l5_cortex_exa"),
+        'l5_cortex_exb': url("param/l5_cortex_exb"),
+        'l5_cortex_inh': url("param/l5_cortex_inh"),
+        'l6_cortex_exa': url("param/l6_cortex_exa"),
+        'l6_cortex_exb': url("param/l6_cortex_exb"),
+        'l6_cortex_inh': url("param/l6_cortex_inh"),
+        'retina_lgn': url("param/SpatioTemporalFilterRetinaLGN_defaults"),
+    },
+    'density_frac' : 0.1,  # fraction of the real density used in the simulation
+    'l5a_density' : 19300.0,
+    # 'l5a_density' : 820.0,
+    'l5ab_density_ratio' : 1.,  # free parameter to control the densities of l5a and l5b
+
+    'l5_conn_ratio' : 0.,  # between 0 and 1, to control conns on inh populations
+    # 1 means all connections respect the l5a projections
+    # 0 means all connections respect the l5b projections
+
+
+
+    'results_dir': '',
+    # 'name' : 'SelfSustainedPushPullV1',
+    'name' : 'V1',
+    'reset' : False,
+    
+    # Layers setup
+    'only_afferent' : False,  # Only connections from LGN to L4 are simulated
+    'l23' : True,
+    'l5a' : True,
+    'l5b' : True,
+    'l6a' : False,
+    'l6b' : False,
+
+    # Feedback connectivity setup
+    'l4l5_projection' : True,  # L4 --> L5
+    'lgnl5_projection' : False,  # LGN --> L5
+    'lgnl23_projection' : False,  # LGN --> L23
+
+    'l5a_feedback' : False,  # l5_exa are sending feedback to L23
+    'l6a_feedback' : False,  # cells sending to L4 (feedback to L5, L4) 
+    'l6b_feedback' : False,  # cells sending to L5/6 (horizontal feedback to L5)
+    # 'feedback_lgn' :  True,  # connectivity L6 --> LGN, NOT IMPLEMENTED YET
+
+    'null_stimulus_period' : 150.0,
+    'store_stimuli' : False,    
+    'min_delay' : 0.1,
+    'max_delay' : 100,
+    'time_step' : 0.1,
+    'pynn_seed' : 5,
+    'mpi_seed' : 1023,
+    'trial' : 1,
+    'explosion_monitoring': {
+       'sheet_name': 'V1_Exc_L4',
+       'threshold': 50, # Hz
+    },
+}

@@ -1,0 +1,63 @@
+Spont
+V1_Exc_L4
+1008000
+1008000
+Voltages OK
+Spikes OK
+V1_Inh_L4
+887040
+887040
+Voltages OK
+Spikes OK
+V1_Exc_L2/3
+1008000
+1008000
+Voltages OK
+Spikes OK
+V1_Inh_L2/3
+1008000
+1008000
+Voltages OK
+Spikes OK
+SizeTuning
+V1_Exc_L4
+12054000
+12054000
+Voltages OK
+Spikes OK
+V1_Inh_L4
+10607520
+10607520
+Voltages OK
+Spikes OK
+V1_Exc_L2/3
+12054000
+12054000
+Voltages OK
+Spikes OK
+V1_Inh_L2/3
+12054000
+12054000
+Voltages OK
+Spikes OK
+OrientTuning
+V1_Exc_L4
+16523500
+16523500
+Voltages OK
+Spikes OK
+V1_Inh_L4
+14540680
+14540680
+Voltages OK
+Spikes OK
+V1_Exc_L2/3
+16523500
+16523500
+Voltages OK
+Spikes OK
+V1_Inh_L2/3
+16523500
+16523500
+Voltages OK
+Spikes OK
