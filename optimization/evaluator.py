@@ -114,7 +114,7 @@ class Evaluator(ParameterSearch):
         self.parameters_url = parameters_url
         self.backend = backend
         self.pynn_seed = pynn_seed
-        self.optimization_id = str(datetime.now().strftime('%Y%m%d-%H%M%S') + "_Optimization")
+        self.optimization_id = str(datetime.now().strftime('%Y%m%d-%H%M%S') + f"_Optimization")
         os.mkdir(self.optimization_id)
 
     def check_evaluation_finished(self, slurm_id):
@@ -237,8 +237,10 @@ def define_evaluator(run_script, parameters_url, timeout, config_optimisation):
         num_mpi=16,
         slurm_options=[
             '--hint=nomultithread', 
-            '-N 1-1', 
-            '-x w[9,11,13-17]',  # Runs on the small nodes
+            '-N 1-1',  # ensure minimum 1 node - maximum 1 node is used
+            # '-x w[9,11,13-17]',  # Runs on all the small nodes
+            '-x w[1,2,9,11,13-17]',  # Runs on the small nodes (except w1,w2)
+            # '-x w[3-17]',  # Test small nodes (w1, w2)
             # '-x w[1-8,10,12]',  # Runs on the big nodes
         ],
         path_to_mozaik_env='/home/haman/virt_env/layers56new/bin/activate'

@@ -33,7 +33,7 @@
         },
         'artificial_stimulators' : ref('sheets.l4_cortex_exc.params.artificial_stimulators'),
         'recording_interval'  :  ref('sheets.l4_cortex_exc.params.recording_interval'),                                            
-        'recorders' : url("param/l23_inh_rec"),    
+        'recorders' : url("param_optim/l23_inh_rec"),    
     },
 
     'inhibitory_connection_afferent_ratio' :  ref('sheets.l4_cortex_exc.inhibitory_connection_ratio'), # The fraction of connections that are onto inhibitory neurons compared to excitatory

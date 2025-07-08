@@ -1,15 +1,14 @@
-2025*/
+.vscode/
+.ipynb_checkpoints/
 
-# Simulation runs are denoted bya a date, time stamp and combinations
+# Simulation runs are denoted by a date, time stamp and combinations
+2025*/
 LSV1M*/2024*/
 LSV1M*/2025*/
 
 # ignores jupyter stuff
 LSV1M*/.ipynb_checkpoints/
 LSV1M*/__pycache__/
-
-# ignores vscode stuff
-.vscode/
 
 # ignore my stuff from playing around
 LSV1M*/results
@@ -18,22 +17,16 @@ LSV1M*/analysis_output.txt
 LSV1M*/*.png
 LSV1M*/*.ipynb
 
-# ignore other folders
-# Published model
-# LSV1M_github/  
-# update of references
-# LSV1M_refs-update/
-# model for optimization
-# LSV1M_optimization/
-# model with tsodyks2 synapse
-# LSV1M_tsodyks2/
-
-# my_scripts/
-ParameterSearches/
 
 optimization/logs/
 optimization/__pycache__/
 
-OptLSV1M/Opt*/
-OptLSV1M/logs/
-OptLSV1M/figures/
+ntbs/.ipynb_checkpoints/
+ntbs/__pycache__/
+
+my_scripts/__pycache__/
+
+# my_scripts/
+ParameterSearches/
+
+OptLSV1M/

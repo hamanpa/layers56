@@ -124,8 +124,12 @@
             'tau_fac': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.short_term_plasticity.tau_fac'),
         },
 
-    	'weight_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_functions'),  
-        'weight_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_expression'),
+    	'weight_functions' : {
+            'f1' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnectionLong.weight_functions.f1'),
+            'f2' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnectionShort.weight_functions.f2'),
+            'f3' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnectionLong.weight_functions.f3'),
+        },
+        'weight_expression' : 'f1*f3+f2',
         'base_weight': 0.00035,
         # 'base_weight': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.base_weight'),
 
@@ -135,7 +139,7 @@
     
         'num_samples_functions' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_functions'),
         'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
-    	'num_samples' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.num_samples') * ref('sheets.l4_cortex_exc.inhibitory_connection_ratio'),
+    	'num_samples' : (ref('sheets.l23_cortex_exc.L23ExcL23ExcConnectionShort.num_samples') +  ref('sheets.l23_cortex_exc.L23ExcL23ExcConnectionLong.num_samples'))* ref('sheets.l4_cortex_exc.inhibitory_connection_ratio'),
     
         'self_connections': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.self_connections'),
         'local_module': None,

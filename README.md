@@ -1,30 +1,104 @@
 Directory related to the project of adding deep layers into LSV1M model
 
 Models
+- **LSV1M_remy**: The default V1 model that was published
+- **LSV1M_refs-update**: Update of `LSV1M_remy` model, where more parameters are referenced, should give the same results as `LSV1M_remy` model 
+    - Comparison of the models ... 
+- **LSV1M_tsodyks2**: This model was supposed to test different type of synapse
+    - To run this model one has to make changes in mozaik!
+    `mozaik.connectors.Connector` class has predefined `static_synapse` or `tsodyks_synapse` (for details check NEST documentation)
+    - Reason for this model: It turned out PyNN has unexpected behavior with `tsodyks_synapse`
+- **LSV1M_optimization**: 
+- **LSV1M_split_ee**: Model suggested by Tanguy, the long-range connections of L23 are split into two short and long connections are optimized separately
+    - model for optimization
+- **LSV1M_split_full**
+- **LSV1M_infragranular**
+- Details on file structure of models is at the end of this file
 
 optimization
-- 
+- Folder based on Tanguys optimization approach
+- `optimisation.sbatch`
+- `run_optimisation.py`
+- `evaluator.py`
+- `targets.py`: defines Target classes to evaluate results
+- `utils.py`
 
 scripts
 - 
 
 ntbs
+- Folder collecting relevant jupyter notebooks
 -
 
+
+
+
+# Mozaik updates
+For this project I did few changes in mozaik
+- Explosion monitoring
+- length of the folder
+
+possible to add
+- tsodyks2_synapse (based on specification of `tau_psc`)
+- connectivity
+
+
+# How to run stuff
+
+### single experiment (ParameterSearch)
+
+1. change directory to the model of choice
+2. Update `run_parameter_search.py` file with parameters of interest
+3. run one of the following commands
+
+**Drifting grating** and natural images protocol (~10h of runtime with our setup)
+    `python run_parameter_search.py run.py nest param/defaults` 
+**Size tuning** protocol (~10h of runtime with our setup)
+    `python run_parameter_search.py run_stc.py nest param/defaults` 
+**Spontaneous** activity protocol (~1h30 of runtime with our setup)
+    `python run_parameter_search.py run_spont.py nest param_spont/defaults`
+**optimization** experiments protocol (~1h30 of runtime with our setup)
+    `python run_parameter_search.py run_optimization_experiment.py nest param_optim/defaults`
+
+### Optimization
+
+In the *model* folder
+1. create `param_optim` folder with parameters
+2. make `config_optimisation` file in there
+    - should contain keys [`parameters`, `optimiser_centroid`, `targets`]
+3. make `run_optimization_experiment.py` protocol file
+
+In the *optimization* folder
+1. edit `run_optimisation.py` file
+    - model
+    - continue_cp (optional, if we want to continue from previous point)
+2. ensure `evaluator` has correct slurm options
+    - in `define_evaluator` function
+3. run `sbatch optimisation.sbatch`
+
+Notes:
+    optimization log is in *optimization* folder
+    optimization result folder is in *model* folder
+    after running optimization remove slurm logs
+
+# Inspecting results
+
+### Arkheia
+
+### online mozaik
+
+# Other stuff
+
+### Table with model parameters
+
+### Table with information about V1 cortex
+
+
+
 # Issues
-- results directory
-    - I know how to make it run from the model directory only
-    - optimization needs to have results in the same directory
 
 
-# how to run stuff
 
-Drifting grating and natural images protocol::
-    python run_parameter_search.py run.py nest param/defaults (~10h of runtime with our setup)
-Size tuning protocol::
-    python run_parameter_search.py run_stc.py nest param/defaults (~10h of runtime with our setup)
-Spontaneous activity protocol::
-    python run_parameter_search.py run_spont.py nest param_spont/defaults (~1h30 of runtime with our setup)
 
 
 ---
