@@ -1,18 +1,26 @@
 Directory related to the project of adding deep layers into LSV1M model
 
-Models
+Models (ordered chronologically, to hint the parent)
 - **LSV1M_remy**: The default V1 model that was published
 - **LSV1M_refs-update**: Update of `LSV1M_remy` model, where more parameters are referenced, should give the same results as `LSV1M_remy` model 
     - Comparison of the models ... 
-- **LSV1M_tsodyks2**: This model was supposed to test different type of synapse
-    - To run this model one has to make changes in mozaik!
+- **LSV1M_tsodyks2**: This model was supposed to test different [type of synapse](#pynn---short-term-plasticity)
+    - To run this model one has to make changes in mozaik:
     `mozaik.connectors.Connector` class has predefined `static_synapse` or `tsodyks_synapse` (for details check NEST documentation)
-    - Reason for this model: It turned out PyNN has unexpected behavior with `tsodyks_synapse`
-- **LSV1M_optimization**: 
+    - To run this model one also has to make changes in PyNN (see [PyNN issue](https://github.com/NeuralEnsemble/PyNN/issues/810)) so that `Tsodyks2_synapse` work with PyNN
+    - Reason for this model: Test the synapse models, when I was exploring thebehavior with `tsodyks_synapse`.
+- **LSV1M_optimization**: Model based on LSV1M_refs-update
+    - corrected short term plasticity parameters (in LSV1M_remy the `tau_psc` was not set up properly, PyNN promised to update it which does not happen)
+    - added density fraction and updated densities
+    - this model is *taken as the base for later ones*
 - **LSV1M_split_ee**: Model suggested by Tanguy, the long-range connections of L23 are split into two short and long connections are optimized separately
     - model for optimization
 - **LSV1M_split_full**
 - **LSV1M_infragranular**
+    - Layer 5 split to L5a , L5b, L5inh
+    - Layer 6 split to L6a, L6b, L6inh
+
+
 - Details on file structure of models is at the end of this file
 
 optimization
@@ -24,11 +32,12 @@ optimization
 - `utils.py`
 
 scripts
-- 
+- `compare_model_results.py` this script loads results of two models and tests whether the results are equal
+- ``
 
 ntbs
 - Folder collecting relevant jupyter notebooks
--
+- 
 
 
 
@@ -36,11 +45,17 @@ ntbs
 # Mozaik updates
 For this project I did few changes in mozaik
 - Explosion monitoring
-- length of the folder
+- directory name length
+    - added limit 50 chars
+- NothingToWriteError
+    - change so that it logs error message
+- mpi
+    - parameterSearch, predefined wintermute params
 
 possible to add
 - tsodyks2_synapse (based on specification of `tau_psc`)
-- connectivity
+- Connectivity saving
+    - saving connectivity when creating connections
 
 
 # How to run stuff
@@ -89,6 +104,9 @@ Notes:
 
 # Other stuff
 
+### Model param setup
+in each file there is 
+
 ### Table with model parameters
 
 ### Table with information about V1 cortex
@@ -97,8 +115,48 @@ Notes:
 
 # Issues
 
+### PyNN - Short Term Plasticity
+
+[`Tsodyks_synapse`](https://nest-simulator.readthedocs.io/en/stable/models/tsodyks_synapse.html) expects four parameters
+- `U`
+- `tau_psc`
+- `tau_rec`
+- `tau_fac`
+
+[`Tsodyks2_synapse`](https://nest-simulator.readthedocs.io/en/stable/models/tsodyks2_synapse.html) expects four parameters
+- `U`
+- `tau_rec`
+- `tau_fac`
+- this model assumes that `tau_psc` is negligible compared to `tau_rec` 
+
+Model **LSV1M_remy** did not bother with writing `tau_psc` explicitly as PyNN in certain cases uses the target cell synaptic time parameters.
+
+`pyNN.connectors.FromListConnector` is the method we use in LSV1M to make connection from predefined list.
+This class when making connections calls `pyNN.nest.projection.Projection._convergent_connect` method
+
+PyNN behavior is (for `tsodyks_synapse`)
+    `_connect`:
+        use `tau_psc` based on synaptic time constant regardless `tau_psc` was provided or not
+    `_convergent_connect`:
+        if `tau_psc` is provided, it will be used 
+        if it is not provided, it will use synaptic time constant 
 
 
+
+
+---
+Notes on old optimizations
+
+
+**OptLSV1M/20250701-111155_Optimization**
+- param-split (model with full split of long range connections ee and ei)
+- here I noticed issue with nodes w1 w2!
+- keep this folder until solved
+- continuation of this is **LSV1M_split_full/20250704-222215_Optimization**
+
+**LSV1M_split_ee/20250707-143705_Optimization**
+- test of nodes w1 w2 after restarting
+- 
 
 
 ---

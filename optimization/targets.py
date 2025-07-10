@@ -5,7 +5,7 @@ from mozaik.storage.queries import param_filter_query
 from utils import *
 from math import isclose
 from scipy.spatial.distance import cdist
-
+import time
 
 class TargetValue():
 
@@ -18,13 +18,19 @@ class TargetValue():
         assert self.norm != 0
 
     @staticmethod
-    def print_feature_results(name, value, score):
+    def print_feature_results(name, value, score, slurm_id=None, pid=None):
         """Prints the results in formatted way while handling value None"""
 
+
+        msg = f"[{time.strftime('%D-%H:%M:%S')}] "
+        if pid:
+            msg += f"PID: {pid}. "
+        if slurm_id:
+            msg += f"Slurm job: {slurm_id}. "
         if value is None:
-            print(f"For feature {name}, for value {value} computed score {score:.2f}")
+            print(msg + f"For feature {name}, for value {value} computed score {score:.2f}")
         else:
-            print(f"For feature {name}, for value {value:.4f} computed score {score:.2f}")
+            print(msg + f"For feature {name}, for value {value:.4f} computed score {score:.2f}")
 
     @staticmethod
     def get_orient_cell_idx(orientation, data_store, sheet_name) -> list:
@@ -56,10 +62,10 @@ class TargetValue():
             raise ValueError(f"More than one segment found for spontaneous activity in sheet {sheet_name}.")
         return seg
 
-    def calculate_value(self, data_store):
+    def calculate_value(self, data_store, **kwargs):
         raise NotImplementedError
 
-    def calculate_score(self, data_store):
+    def calculate_score(self, data_store, slurm_id=None, pid=None, **kwargs):
         if data_store is None:
             return self.max_score
         value = self.calculate_value(data_store)
@@ -72,12 +78,12 @@ class TargetValue():
         threshold_score = min(score, self.max_score)
         if numpy.isnan(threshold_score):
             threshold_score = self.max_score
-        self.print_feature_results(self.name, value, threshold_score)
+        self.print_feature_results(self.name, value, threshold_score, slurm_id=slurm_id, pid=pid)
         return threshold_score
 
 
 class OneBoundUpperTarget(TargetValue):
-    def calculate_score(self, data_store):
+    def calculate_score(self, data_store, slurm_id=None, pid=None, **kwargs):
         if data_store is None:
             return self.max_score
         value = self.calculate_value(data_store)
@@ -96,12 +102,12 @@ class OneBoundUpperTarget(TargetValue):
         threshold_score = min(score, self.max_score)
         if numpy.isnan(threshold_score):
             threshold_score = self.max_score
-        self.print_feature_results(self.name, value, threshold_score)
+        self.print_feature_results(self.name, value, threshold_score, slurm_id=slurm_id, pid=pid)
         return threshold_score
 
 
 class OneBoundLowerTarget(TargetValue):
-    def calculate_score(self, data_store):
+    def calculate_score(self, data_store, slurm_id=None, pid=None, **kwargs):
         if data_store is None:
             return self.max_score
         value = self.calculate_value(data_store)
@@ -120,7 +126,7 @@ class OneBoundLowerTarget(TargetValue):
         threshold_score = min(score, self.max_score)
         if numpy.isnan(threshold_score):
             threshold_score = self.max_score
-        self.print_feature_results(self.name, value, threshold_score)
+        self.print_feature_results(self.name, value, threshold_score, slurm_id=slurm_id, pid=pid)
         return threshold_score
 
 
@@ -134,7 +140,7 @@ class RangeTarget(TargetValue):
         self.sheet_name = sheet_name
         assert self.norm != 0
 
-    def calculate_score(self, data_store):
+    def calculate_score(self, data_store, slurm_id=None, pid=None, **kwargs):
         if data_store is None:
             return self.max_score
         value = self.calculate_value(data_store)
@@ -154,7 +160,7 @@ class RangeTarget(TargetValue):
         threshold_score = min(score, self.max_score)
         if numpy.isnan(threshold_score):
             threshold_score = self.max_score
-        self.print_feature_results(self.name, value, threshold_score)
+        self.print_feature_results(self.name, value, threshold_score, slurm_id=slurm_id, pid=pid)
         return threshold_score
 
 

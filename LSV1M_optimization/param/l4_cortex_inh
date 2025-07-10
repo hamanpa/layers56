@@ -166,11 +166,11 @@
         'num_samples' : {
              'class_name': 'PyNNDistribution',
              'params': {
-                     'name': 'uniform',
-                     'low': ref('sheets.l4_cortex_inh.AfferentMean') - ref('sheets.l4_cortex_inh.AfferentVar'),
-                     'high': ref('sheets.l4_cortex_inh.AfferentMean') + ref('sheets.l4_cortex_inh.AfferentVar'),
-                 },
-         },
+                    'name': 'uniform',
+                    'low': ref('sheets.l4_cortex_inh.AfferentMean') - ref('sheets.l4_cortex_inh.AfferentVar'),
+                    'high': ref('sheets.l4_cortex_inh.AfferentMean') + ref('sheets.l4_cortex_inh.AfferentVar'),
+                },
+        },
 
         'local_module': None,
     }

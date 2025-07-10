@@ -33,7 +33,7 @@
         },
         'artificial_stimulators' : {},
         'recording_interval'  :  1.0,                                                            
-        'recorders' : url("param/l4_exc_rec"),
+        'recorders' : url("param_optim/l4_exc_rec"),
     },
 
     'K' : 1000, # Number of synapses per neuron
@@ -167,7 +167,6 @@
         'off_bias' : 1.0,
         'gauss_coefficient' : 0.085,
 
-
         'short_term_plasticity': {
             'U': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.short_term_plasticity.U'),
             'tau_rec': 125.0, 
@@ -190,13 +189,13 @@
         'num_samples_functions' : None,
         'num_samples_expression' : '',
         'num_samples' : {
-             'class_name': 'PyNNDistribution',
-             'params': {
-                     'name': 'uniform',
-                     'low': ref('sheets.l4_cortex_exc.AfferentMean') - ref('sheets.l4_cortex_exc.AfferentVar'),
-                     'high': ref('sheets.l4_cortex_exc.AfferentMean') + ref('sheets.l4_cortex_exc.AfferentVar'),
-                 },
-         },
+            'class_name': 'PyNNDistribution',
+            'params': {
+                    'name': 'uniform',
+                    'low': ref('sheets.l4_cortex_exc.AfferentMean') - ref('sheets.l4_cortex_exc.AfferentVar'),
+                    'high': ref('sheets.l4_cortex_exc.AfferentMean') + ref('sheets.l4_cortex_exc.AfferentVar'),
+                },
+        },
 
         'local_module': None,
     }        

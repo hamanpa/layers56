@@ -33,7 +33,7 @@
         },
         'artificial_stimulators' : ref('sheets.l4_cortex_exc.params.artificial_stimulators'),
         'recording_interval'  :  ref('sheets.l4_cortex_exc.params.recording_interval'),
-        'recorders' : url("param/l23_exc_rec"),
+        'recorders' : url("param_optim/l23_exc_rec"),
     },
     
     'K' : 2300, # Number of synapses per neuron

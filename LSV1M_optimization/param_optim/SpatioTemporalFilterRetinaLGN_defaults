@@ -7,7 +7,7 @@
         'mpi_reproducible_noise' : False,
         'cached' : False,
         'cache_path' : 'retinal_cache/',
-        'recorders' :  url("param/lgn_rec"),
+        'recorders' :  url("param_optim/lgn_rec"),
         'recording_interval'  :  ref('sheets.l4_cortex_exc.params.recording_interval'),
         'receptive_field': {
             #'func': 'lambda x,y,t,p: numpy.sin(t)',
@@ -37,11 +37,11 @@
         'gain_control' : {
             'gain': 12,
             'non_linear_gain' : {
-                        'contrast_gain' : 0.5,
-                        'contrast_scaler' : 0.0007,
-                        'luminance_gain' : 0.01,
-                        'luminance_scaler' : 1.0e-8,
-                    }
+                'contrast_gain' : 0.5,
+                'contrast_scaler' : 0.0007,
+                'luminance_gain' : 0.01,
+                'luminance_scaler' : 1.0e-8,
+            }
         },
         'cell': {
             'model': 'iaf_cond_exp_sc_nc',

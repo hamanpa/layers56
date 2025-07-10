@@ -15,6 +15,7 @@
         'l23_cortex_inh': url("param_spont/l23_cortex_inh"),
         'retina_lgn': url("param_spont/SpatioTemporalFilterRetinaLGN_defaults"),
     },
+    'density_frac' : 0.1,
     'only_afferent' : False,
     'results_dir': '',
     'name' : 'SelfSustainedPushPullV1',

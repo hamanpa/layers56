@@ -37,11 +37,11 @@
         'gain_control' : {
             'gain': 12,
             'non_linear_gain' : {
-                        'contrast_gain' : 0.5,
-                        'contrast_scaler' : 0.0007,
-                        'luminance_gain' : 0.01,
-                        'luminance_scaler' : 1.0e-8,
-                    }
+                'contrast_gain' : 0.5,
+                'contrast_scaler' : 0.0007,
+                'luminance_gain' : 0.01,
+                'luminance_scaler' : 1.0e-8,
+            }
         },
         'cell': {
             'model': 'iaf_cond_exp_sc_nc',

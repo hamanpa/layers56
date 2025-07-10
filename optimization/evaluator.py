@@ -39,11 +39,11 @@ class FitnessCalculator():
     def __init__(self, objectives):
         self.objectives = objectives
 
-    def calculate_scores(self, data_store):
-        return {t.name: t.calculate_score(data_store) for t in self.objectives}
+    def calculate_scores(self, data_store, **kwargs):
+        return {t.name: t.calculate_score(data_store, **kwargs) for t in self.objectives}
 
-    def calculate_values(self, data_store):
-        return {t.name: t.calculate_value(data_store) for t in self.objectives}
+    def calculate_values(self, data_store, **kwargs):
+        return {t.name: t.calculate_value(data_store, **kwargs) for t in self.objectives}
 
 
 class SlurmSequentialBackend():
@@ -141,8 +141,8 @@ class Evaluator(ParameterSearch):
             return False
         return slurm_status == {'COMPLETED'}
 
-    def evaluate_data_store(self, data_store):
-        return self.fitness_calculator.calculate_scores(data_store)
+    def evaluate_data_store(self, data_store, **kwargs):
+        return self.fitness_calculator.calculate_scores(data_store, **kwargs)
 
     def evaluate_parameters(self, parameters):
 
@@ -176,7 +176,7 @@ class Evaluator(ParameterSearch):
             break
 
         print(f"[{time.strftime('%D-%H:%M:%S')}] On pid {pid}. Computing scores ...")
-        score = self.evaluate_data_store(data_store)
+        score = self.evaluate_data_store(data_store, slurm_id=slurm_id, pid=pid)
         print(f"[{time.strftime('%D-%H:%M:%S')}] On pid {pid}. Done computing scores.")
 
         shutil.rmtree(subf) 

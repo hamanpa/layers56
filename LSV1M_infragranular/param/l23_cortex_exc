@@ -2,30 +2,29 @@
     #CorticalUniformSheet parameters
     
     'component': 'mozaik.sheets.vision.VisualCorticalUniformSheet',
-    
     'params':{
         'name':'V1_Exc_L2/3',
-        'sx': ref('sheets.l4_cortex_exc.params.sx'),
-        'sy': ref('sheets.l4_cortex_exc.params.sy'),
+        'sx':ref('sheets.l4_cortex_exc.params.sx'),
+        'sy':ref('sheets.l4_cortex_exc.params.sy'),
         'density': 19300.0 * ref('density_frac'),
-        'mpi_safe' : False,
+        'mpi_safe' : ref('sheets.l4_cortex_exc.params.mpi_safe'),
         'magnification_factor': ref('sheets.l4_cortex_exc.params.magnification_factor'),
         'cell': {
-            'native_nest': False,
-            'model': 'EIF_cond_exp_isfa_ista',
+            'native_nest': ref('sheets.l4_cortex_exc.params.cell.native_nest'),
+            'model': ref('sheets.l4_cortex_exc.params.cell.model'),
             'params': {
-                'v_rest': -80,
-                'v_reset': -60.0,
-                'tau_refrac': 2.0,
+                'v_rest': ref('sheets.l4_cortex_exc.params.cell.params.v_rest'),
+                'v_reset': ref('sheets.l4_cortex_exc.params.cell.params.v_reset'),
+                'tau_refrac': ref('sheets.l4_cortex_exc.params.cell.params.tau_refrac'),
                 'tau_m': ref('sheets.l4_cortex_exc.params.cell.params.tau_m'),
                 'cm': ref('sheets.l4_cortex_exc.params.cell.params.cm'),
-                'e_rev_E': 0.0,
-                'e_rev_I': -80.0,
+                'e_rev_E': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_E'),
+                'e_rev_I': ref('sheets.l4_cortex_exc.params.cell.params.e_rev_I'),
                 'tau_syn_E': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_E'),
                 'tau_syn_I': ref('sheets.l4_cortex_exc.params.cell.params.tau_syn_I'),
                 'a' : ref('sheets.l4_cortex_exc.params.cell.params.a'),
                 'b' : ref('sheets.l4_cortex_exc.params.cell.params.b'),
-                'delta_T' : 0.8,
+                'delta_T' : ref('sheets.l4_cortex_exc.params.cell.params.delta_T'),
                 'tau_w' : ref('sheets.l4_cortex_exc.params.cell.params.tau_w'),
                 'v_thresh' : ref('sheets.l4_cortex_exc.params.cell.params.v_thresh'), 
             },
@@ -34,21 +33,23 @@
             },
         },
         'artificial_stimulators' : ref('sheets.l4_cortex_exc.params.artificial_stimulators'),
-        'recording_interval' : ref('sheets.l4_cortex_exc.params.recording_interval'),                                            
-        'recorders' : url("param/l23_exc_rec"),    
-    },
-    
+        'recording_interval'  :  ref('sheets.l4_cortex_exc.params.recording_interval'),
+        'recorders' : url("param/l23_exc_rec"),
+    },    
 
     'K' : 2300, # Number of incoming synapses to a neuron
     'l4_aff_ratio' : 0.22,
     'l5a_aff_ratio' : 0.2,
     'self_conns' : 1.0 - ref('sheets.l23_cortex_exc.l4_aff_ratio') - ref('sheets.l23_cortex_exc.l5a_aff_ratio'),
     
-
-
     'L23ExcL23ExcConnection': {
-        'target_synapses' : 'excitatory',             
-        'short_term_plasticity': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.short_term_plasticity'),
+        'target_synapses' : 'excitatory',
+        'short_term_plasticity': {
+            'U': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.short_term_plasticity.U'),
+            'tau_rec': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.short_term_plasticity.tau_rec'),
+            'tau_psc': ref('sheets.l23_cortex_exc.params.cell.params.tau_syn_E'),
+            'tau_fac': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.short_term_plasticity.tau_fac'),
+        },
 
         'weight_functions' : {
             'f1' : {
@@ -85,12 +86,18 @@
         'num_samples_expression' : ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.num_samples_expression'),
         'num_samples' : ref('sheets.l23_cortex_exc.K')*4/5*ref('sheets.l23_cortex_exc.self_conns'),
 
+        'self_connections': ref('sheets.l4_cortex_exc.L4ExcL4ExcConnection.self_connections'),
         'local_module': None,
     },
 
     'L23ExcL23InhConnection': {
         'target_synapses' : 'excitatory',
-        'short_term_plasticity': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.short_term_plasticity'),
+        'short_term_plasticity': {
+            'U': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.short_term_plasticity.U'),
+            'tau_rec': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.short_term_plasticity.tau_rec'),
+            'tau_psc': ref('sheets.l23_cortex_inh.params.cell.params.tau_syn_E'),
+            'tau_fac': ref('sheets.l4_cortex_exc.L4ExcL4InhConnection.short_term_plasticity.tau_fac'),
+        },
 
     	'weight_functions' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_functions'),
         'weight_expression' : ref('sheets.l23_cortex_exc.L23ExcL23ExcConnection.weight_expression'),

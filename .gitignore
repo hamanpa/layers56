@@ -17,7 +17,6 @@ LSV1M*/analysis_output.txt
 LSV1M*/*.png
 LSV1M*/*.ipynb
 
-
 optimization/logs/
 optimization/__pycache__/
 
@@ -30,3 +29,6 @@ my_scripts/__pycache__/
 ParameterSearches/
 
 OptLSV1M/
+OptLSV1M/Opt*/
+OptLSV1M/logs/
+OptLSV1M/figures/
